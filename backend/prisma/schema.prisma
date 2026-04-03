@@ -1,0 +1,189 @@
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  name          String?
+  role          String?   @default("user") 
+  emailVerified Boolean   @default(false)
+  image         String?   @db.Text
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  banned Boolean?
+
+
+  createdPolls  Poll[]    @relation("pollAuthor")
+  editedPolls   Poll[]    @relation("pollEditor")
+  comments      Comment[]
+  invoices      Invoice[]
+  votes         Vote[]
+  sessions      Session[]
+  accounts      Account[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?  @db.Text
+  userAgent String?  @db.Text
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String    @db.Text
+  providerId            String    @db.Text
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?   @db.Text
+  refreshToken          String?   @db.Text
+  idToken               String?   @db.Text
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?   @db.Text
+  password              String?   @db.Text
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String   @db.Text
+  value      String   @db.Text
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("verification")
+}
+
+
+model Poll {
+  id         String    @id @default(uuid())
+  authorId   String?
+  editedById   String?
+  categoryId String
+  name String
+  createdAt DateTime @default(now())
+  deadline  DateTime
+  updatedAt   DateTime  @updatedAt
+  active Boolean @default(false)
+  archived Boolean @default(false)
+  banner String?
+
+  archivedAt DateTime?
+  author     User?     @relation("pollAuthor",fields: [authorId], references: [id], onDelete: SetNull)
+  editedBy    User?     @relation("pollEditor", fields: [editedById], references: [id], onDelete: SetNull)
+  category   Category  @relation(fields: [categoryId], references: [id])
+  comments   Comment[]
+  options    Option[]
+  invoices   Invoice[]
+  votes      Vote[]
+  
+  
+  @@map("poll")
+  @@index([deadline])
+}
+
+model Category {
+  id    String @id @default(uuid())
+  title String 
+  polls Poll[]
+
+  @@map("category")
+}
+
+model Nominee {
+  id      String   @id @default(uuid())
+  name    String
+  bio     String?  @db.Text
+  avatar  String?  @db.Text
+  options Option[]
+
+  @@map("nominee")
+}
+
+model Option {
+  id        String  @id @default(uuid())
+  pollId    String
+  nomineeId String
+  poll      Poll    @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  nominee   Nominee @relation(fields: [nomineeId], references: [id], onDelete: Cascade)
+  votes     Vote[]
+
+  @@unique([pollId, nomineeId])
+  @@map("option")
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  text      String   @db.Text
+  createdAt DateTime @default(now())
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  pollId    String
+  poll      Poll     @relation(fields: [pollId], references: [id], onDelete: Cascade)
+
+  @@map("comment")
+}
+//There is a pollId here as I want to make pollIdxDeviceId unique later
+model Vote {
+  id        String      @id @default(uuid())
+  deviceId  String?
+  tier      PricingTier @default(FREE)
+  createdAt DateTime    @default(now())
+  weight Int
+
+  userId    String?
+  user      User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  pollId    String
+  poll      Poll        @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  optionId  String
+  option    Option      @relation(fields: [optionId], references: [id], onDelete: Cascade)
+
+  @@map("vote")
+}
+
+model Invoice {
+  id          String      @id @default(uuid())
+  amount      Decimal     @db.Decimal(10, 2)
+  currency    String      @default("PHP")
+  status      String      @default("PENDING") 
+  referenceId String?     @unique //fr xendit
+  tier        PricingTier
+  createdAt   DateTime    @default(now())
+
+  userId      String?
+  user        User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  pollId      String?
+  poll        Poll?       @relation(fields: [pollId], references: [id], onDelete: SetNull)
+
+  @@map("invoice")
+}
+
+enum PricingTier {
+  FREE
+  BASIC
+  PREMIUM
+}
