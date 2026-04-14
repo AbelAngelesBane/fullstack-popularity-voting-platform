@@ -10,7 +10,8 @@ interface PollUpdateInput {
   deadline?: Date | string;
   editedById: string;
   archived?: boolean;
-  archivedAt?: Date | string
+  archivedAt?: Date | string;
+  active?: boolean;
 }
 
 const weights = {
@@ -79,21 +80,23 @@ export async function getPolls(req: Request, res: Response) {
   const pageLimit = 10;
   try {
     const currentPage = parseInt(req.query.page as string) || 1;
-    const  searchParams  = req.query.filter;
+    const searchParams = req.query.filter;
 
-    
     const [count, polls] = await Promise.all([
       await prisma.poll.count(),
       await prisma.poll.findMany({
-        ...(searchParams && searchParams !== "archived" && {where:{
-          active:searchParams === "active" ? true : false 
-        }}
-      ),
-      ...(searchParams && searchParams === "archived" && {
-        where:{
-          archived:true
-        }
-      }),
+        ...(searchParams &&
+          searchParams !== "archived" && {
+            where: {
+              active: searchParams === "active" ? true : false,
+            },
+          }),
+        ...(searchParams &&
+          searchParams === "archived" && {
+            where: {
+              archived: true,
+            },
+          }),
         take: pageLimit,
         skip: (currentPage - 1) * pageLimit,
         orderBy: { createdAt: "desc" },
@@ -109,48 +112,10 @@ export async function getPolls(req: Request, res: Response) {
       },
     });
   } catch (error) {
-    console.log("Error on getPolls ", error)
+    console.log("Error on getPolls ", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 }
-
-// export async function createPolls(req: Request, res: Response) {
-//   try {
-//     const { id } = req.user;
-
-//     const { name, categoryId, deadline, nomineeIds } = req.body;
-//     if (!name || !categoryId || !deadline || nomineeIds.length < 2) {
-//       return res.status(400).json({
-//         error:
-//           "Bad request. Please provide a name,deadline,  category, and at least 2 nominees.",
-//       });
-//     }
-//     console.log("user id: ", id);
-//     const poll = await prisma.poll.create({
-//       data: {
-//         name,
-//         authorId: id,
-//         categoryId: categoryId,
-//         deadline: new Date(deadline).toISOString(),
-//         options: {
-//           // I made a dumb code here before, I used connect! Let it be known!
-//           create: nomineeIds.map((id: string) => ({
-//             nomineeId: id,
-//           })),
-//         },
-//       },
-//       include: {
-//         options: true,
-//       },
-//     });
-//     return res.status(200).json({
-//       data: poll,
-//     });
-//   } catch (error) {
-//     console.log(error);
-//     return res.status(500).json({ error: "Internal server error" });
-//   }
-// }
 
 export async function createPolls(req: Request, res: Response) {
   try {
@@ -158,9 +123,16 @@ export async function createPolls(req: Request, res: Response) {
 
     const { name, categoryId, deadline, nomineeIds, banner } = req.body;
 
-    if (!name || !categoryId || !deadline || !nomineeIds || nomineeIds.length < 2) {
+    if (
+      !name ||
+      !categoryId ||
+      !deadline ||
+      !nomineeIds ||
+      nomineeIds.length < 2
+    ) {
       return res.status(400).json({
-        error: "Bad request. Please provide a name, deadline, category, and at least 2 nominees.",
+        error:
+          "Bad request. Please provide a name, deadline, category, and at least 2 nominees.",
       });
     }
 
@@ -169,7 +141,7 @@ export async function createPolls(req: Request, res: Response) {
         name,
         authorId: id,
         categoryId: categoryId,
-        banner: banner || null, 
+        banner: banner || null,
         deadline: new Date(deadline).toISOString(),
         options: {
           create: nomineeIds.map((id: string) => ({
@@ -194,50 +166,65 @@ export async function createPolls(req: Request, res: Response) {
 export async function updatePolls(req: Request, res: Response) {
   try {
     //For now, all admins can edit.
-    const { name, deadline, isArchived } = req.body;
-    const {pollId} = req.params;
+    const { name, deadLine, isArchived, isActive } = req.body;
+    const { pollId } = req.params;
     const { id } = req.user;
 
-
+    if (Object.keys(req.body).length === 0) {
+      return res.status(400).json({ error: "Nothing to update" });
+    }
 
     const updatedData: PollUpdateInput = {
-      editedById:id,
+      editedById: id,
     };
 
-    if (name) {
+    if (Object.hasOwn(req.body,"name")) {
       updatedData.name = name;
     }
 
-    if (deadline) {
-      const formattedDate = new Date(deadline);
+    if (Object.hasOwn(req.body,"deadLine")) {
+      const formattedDate = new Date(deadLine);
       if (isNaN(formattedDate.getTime())) {
         return res.status(400).json({ error: "Invalid date format" });
       }
       updatedData.deadline = formattedDate;
     }
-    if(isArchived){
-      if(isArchived === "true" || isArchived === "false"){
-        updatedData.archived = isArchived === "true" ? true : false
+
+    if (Object.hasOwn(req.body, "isArchived")) {
+      if (typeof isArchived === "boolean") {
+        console.log("REACHED HERE:", isArchived);
+        updatedData.archived = isArchived;
+      } else {
+        return res.status(400).json({ error: "Invalid input: isArchived" });
       }
-      
+    }
+
+    if (Object.hasOwn(req.body, "isActive")) {
+      if (typeof isActive === "boolean") {
+        updatedData.active = isActive;
+      } else {
+        return res.status(400).json({ error: "Invalid input: Active" });
+      }
     }
 
     //If deadline is not later than today,intercept
-    const deadlineDate = new Date(deadline);
+    const deadlineDate = new Date(deadLine);
     const now = new Date();
-    if(deadlineDate < now)return res.status(400).json({ error: "The deadline cannot be in the past." });
-    
+    if (deadlineDate < now)
+      return res
+        .status(400)
+        .json({ error: "The deadline cannot be in the past." });
 
-    if (!name && !deadline && !isArchived) {
-      return res.status(400).json({ error: "Nothing to update" });
-    }
-    if(!pollId || pollId === ""){
+    if (!pollId || pollId === "") {
       return res.status(400).json({ error: "Missing params" });
     }
     const poll = await prisma.poll.update({
       where: { id: pollId as string },
-      data: {...updatedData,
-      ...((isArchived && isArchived === true) && {archivedAt: new Date()})
+      data: {
+        ...updatedData,
+        ...(isArchived && isArchived === true
+          ? { archivedAt: new Date() }
+          : { archivedAt: null }),
       },
     });
 
@@ -248,53 +235,57 @@ export async function updatePolls(req: Request, res: Response) {
 }
 export async function getPollById(req: Request, res: Response) {
   try {
-    const { pollId } = req.params as {pollId: string};
-    if (!pollId)return res.status(400).json({ error: "Required param missing" });
+    const { pollId } = req.params as { pollId: string };
+    if (!pollId)
+      return res.status(400).json({ error: "Required param missing" });
     const poll = await prisma.poll.findFirst({
       where: {
         id: pollId,
       },
-      include:{
-        category:true,
-        options:{
-          include:{
-            nominee:true,
-            _count:{
-              select:{votes:true}
-            }
-          }
+      include: {
+        category: true,
+        options: {
+          include: {
+            nominee: true,
+            _count: {
+              select: { votes: true },
+            },
+          },
         },
-        comments:true
-      }
+        comments: true,
+      },
     });
     if (!poll) return res.status(404).json({ error: "Poll not found" });
-    const totalVotes = poll?.options.reduce((init, opt)=>init + opt._count.votes,0)
+    const totalVotes = poll?.options.reduce(
+      (init, opt) => init + opt._count.votes,
+      0,
+    );
     const response = {
-            "id": poll.id,
-            "authorId": poll.authorId,
-            "editedById": poll.editedById,
-            "category": poll.category.title,
-            "name": poll.name,
-            "createdAt": poll.createdAt,
-            "deadline": poll.deadline,
-            "updatedAt": poll.updatedAt,
-            "active": poll.active,
-            "archived":poll.archived,
-            "archivedAt":poll.archivedAt,
-            totalVotes,
-            "nominees":poll.options.map((item) =>{
-              return {
-                "id":item.id,
-                "pollId":item.pollId,
-                "nomineeId":item.id,
-                "name":item.nominee.name,
-                "bio": item.nominee.bio,
-                "avatar":item.nominee.avatar,
-                "votes":item._count.votes,
-              }
-            })
-    }
-    return res.status(200).json({ data: {response} });
+      id: poll.id,
+      authorId: poll.authorId,
+      editedById: poll.editedById,
+      category: poll.category.title,
+      name: poll.name,
+      createdAt: poll.createdAt,
+      deadline: poll.deadline,
+      updatedAt: poll.updatedAt,
+      active: poll.active,
+      archived: poll.archived,
+      archivedAt: poll.archivedAt,
+      totalVotes,
+      nominees: poll.options.map((item) => {
+        return {
+          id: item.id,
+          pollId: item.pollId,
+          nomineeId: item.id,
+          name: item.nominee.name,
+          bio: item.nominee.bio,
+          avatar: item.nominee.avatar,
+          votes: item._count.votes,
+        };
+      }),
+    };
+    return res.status(200).json({ data: { response } });
   } catch (error) {
     return res.status(500).json({ error: "Internal server error" });
   }
@@ -330,12 +321,11 @@ export async function registerNominees(req: Request, res: Response) {
   try {
     const avatar = req.file;
     const { name, bio } = req.body;
-    
-    
+
     if (!name || !bio || !avatar)
-      return res
-        .status(404)
-        .json({ error: `Required field or values missing: ${Object.keys(req.body)}` });
+      return res.status(404).json({
+        error: `Required field or values missing: ${Object.keys(req.body)}`,
+      });
 
     const imgUrl = await uploadToSupabase(avatar!);
     const profile = await prisma.nominee.create({
@@ -354,18 +344,16 @@ export async function registerNominees(req: Request, res: Response) {
   }
 }
 
-
-
 export async function searchNominees(req: Request, res: Response) {
   const limit = 7;
   try {
-        console.log("RESULT", req.body)
+    console.log("RESULT", req.body);
 
     const { alreadyLoaded, searchInput } = req.body;
     const results = await prisma.nominee.findMany({
       where: {
         OR: [
-          { name: { startsWith: searchInput} },
+          { name: { startsWith: searchInput } },
           { name: { contains: searchInput } },
           { name: { equals: searchInput } }, // Optional: Exact match priority
         ],
@@ -374,7 +362,6 @@ export async function searchNominees(req: Request, res: Response) {
       skip: alreadyLoaded,
       orderBy: { id: "asc" },
     });
-    
 
     const hasMore = results.length > limit;
 
@@ -394,6 +381,6 @@ export async function searchNominees(req: Request, res: Response) {
 //   try {
 //     const {categ, }
 //   } catch (error) {
-    
+
 //   }
 // }

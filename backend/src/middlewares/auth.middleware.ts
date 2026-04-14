@@ -8,9 +8,9 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
     const session = await auth.api.getSession({
         headers: fromNodeHeaders(req.headers),
     });
-    console.log("Headers check:", req.headers.authorization);
-    console.log("session: ", session)
-    console.log("RAW COOKIES RECEIVED:", req.headers.cookie);
+    // console.log("Headers check:", req.headers.authorization);
+    // console.log("session: ", session)
+    // console.log("RAW COOKIES RECEIVED:", req.headers.cookie);
     if (!session) {
         return res.status(401).json({ 
             error: "Unauthorized. Please sign in to continue." 
