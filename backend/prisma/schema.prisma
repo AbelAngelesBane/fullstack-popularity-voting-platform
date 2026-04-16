@@ -20,7 +20,7 @@ model User {
   updatedAt     DateTime  @updatedAt
   banned Boolean?
 
-
+  
   createdPolls  Poll[]    @relation("pollAuthor")
   editedPolls   Poll[]    @relation("pollEditor")
   comments      Comment[]

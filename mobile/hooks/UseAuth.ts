@@ -3,7 +3,7 @@ import { api } from "@/lib/api"
 import { saveUserData } from "@/lib/storage";
 import { signInSchema, signupSchema } from "@/schema/schemas";
 import { OtpResponse, SignInResponse, SignupResponse, VerifyOtpParams } from "@/types/types";
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import z from "zod";
 
@@ -12,6 +12,14 @@ import z from "zod";
 type SignupData = z.infer<typeof signupSchema>;
 export const useAuth = () => {
     const queryClient = useQueryClient();
+
+    const {data:myProfile, isFetching:isLoadingProfile} = useQuery({
+        queryKey:["myprofile"],
+        queryFn:async()=>{
+            const data = await api.get<{id:string, name:string, image:string, email:string}>("/user/myprofile")
+            return data.data
+        }
+    })
 
     const signUpMutation = useMutation({
         mutationFn: async (body: SignupData) => {
@@ -58,7 +66,9 @@ export const useAuth = () => {
         resendOtpMutation, 
         isResendingOtp:resendOtpMutation.isPending,
         signInMutation,
-        isSigningIn:signInMutation.isPending
+        isSigningIn:signInMutation.isPending,
+        isLoadingProfile,
+        myProfile
     }
 
 }

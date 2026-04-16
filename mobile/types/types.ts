@@ -59,7 +59,6 @@ export interface PollCount {
   votes: number;
 }
 
-// Base properties shared by all polls
 export interface PollBase {
   id: string;
   authorId: string;
@@ -73,6 +72,9 @@ export interface PollBase {
   archived: boolean;
   banner: string | null;
   archivedAt: string | null;
+  category:{
+    title:string
+  }
 }
 
 export interface FeaturedPoll extends PollBase {
@@ -83,5 +85,41 @@ export interface HomePollsResponse {
   data: {
     featuredPolls: FeaturedPoll[];
     activePolls: PollBase[]; 
+  };
+}
+
+export interface PollMinimal {
+  id: string;
+  authorId: string;
+  editedById: string | null;
+  categoryId: string;
+  name: string;
+  createdAt: string;
+  deadline: string;
+  updatedAt: string;
+  active: boolean;
+  archived: boolean;
+  banner: string | null;
+  archivedAt: string | null;
+}
+
+export interface UserVote {
+  id: string;
+  deviceId: string;
+  tier: 'FREE' | 'PREMIUM'; 
+  createdAt: string;
+  weight: number;
+  userId: string;
+  pollId: string;
+  optionId: string;
+  poll: PollMinimal;
+}
+
+export interface MyVotesResponse {
+  data: {
+    votes: UserVote[];
+    count: number;
+    pageLimit: number;
+    hasMore: boolean;
   };
 }

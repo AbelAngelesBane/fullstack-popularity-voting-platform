@@ -208,6 +208,8 @@ const OtpScreen = () => {
                 colors={['rgba(255,255,255,0.1)', 'transparent']}
                 className='absolute left-0 right-0 top-0 h-[300]'
             />
+
+            {/* Back Button */}
             <Pressable onPress={handlePressBack} className='mt-4'>
                 <Ionicons style={{ left: 0, flexDirection: "row", marginBottom: 4, marginHorizontal: 12 }} name='arrow-back-outline' size={100} color="#FFFFFF" />
             </Pressable>
