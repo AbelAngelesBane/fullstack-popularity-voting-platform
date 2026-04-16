@@ -40,21 +40,21 @@ export default function MyTabBar({ state, descriptors, navigation }: BottomTabBa
                 justifyContent:'space-between', 
                 borderRadius:35,
                 paddingVertical:15,
-                marginHorizontal:20,
+                marginHorizontal:18,
                 shadowColor:"#000000",
                 shadowOffset:{width:0, height:12},
                 shadowRadius:10,
                 shadowOpacity:0.1,
                 elevation: 12, //Elevation for androiud, shadow for ios
                  }}>
-<Animated.View style={[animatedStyle, {
-    position: 'absolute',
-    backgroundColor: "#00098D",
-    borderRadius: 180,
-    height: dimensions.height - 20, 
-    width: buttonWidth - 20,       
-    marginHorizontal: 10,
-}]} />
+    <Animated.View style={[animatedStyle, {
+        position: 'absolute',
+        backgroundColor: "#00098D",
+        borderRadius: 180,
+        height: dimensions.height - 20, 
+        width: buttonWidth - 20,       
+        marginHorizontal: 10,
+    }]} />
       {state.routes.map((route, index) => {
         const { options } = descriptors[route.key];
         const label =

@@ -1,6 +1,6 @@
 import {Router} from "express";
 import { authMiddleware } from "../middlewares/auth.middleware";
-import { registerVote, addComment, getPollComments, searchPoll, getHomeFeed, getVotes } from "../controllers/user.controller";
+import { registerVote, addComment, getPollComments, searchPoll, getHomeFeed, getVotes, getCurrentUser } from "../controllers/user.controller";
 
 const router = Router()
 
@@ -11,7 +11,8 @@ router.post("/comment", addComment);
 router.get("/comments/:id",getPollComments);
 router.get("/search", searchPoll);
 router.get("/home", getHomeFeed);
-router.get("/votes", getVotes) //for feed
+router.get("/votes", getVotes); //for feed
+router.get("/myprofile", getCurrentUser)
 
 
 export default router

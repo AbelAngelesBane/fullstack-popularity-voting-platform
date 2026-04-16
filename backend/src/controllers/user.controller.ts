@@ -296,6 +296,10 @@ export async function getHomeFeed(req: Request, res: Response) {
         where: {
           active: true,
         },
+        include:{
+          category:true,
+
+        },
         take: 6,
         orderBy: {
           createdAt: "desc",
@@ -315,7 +319,7 @@ export async function getHomeFeed(req: Request, res: Response) {
 
 //Show more, I didn't check with ai for this so might break or not the standard?
 export async function getVotes(req: Request, res: Response) {
-  const pageLimit = 4;
+  const pageLimit = 8;
   try {
     const loaded = parseInt(req.query.loaded as string) || 0 
     const {id} = req.user;
@@ -376,5 +380,14 @@ export async function updateUser(req: Request, res: Response) {
     return res.status(500).json({ error: "Internal server error" });    
   }
 }
+ export async function getCurrentUser(req: Request, res: Response){
+  try {
+    const {id, name, image, email} = req.user
+    return res.status(200).json({id, image, name, email})
+
+  } catch (error) {
+      return res.status(500).json({ error: "Internal server error" });   
+  }
+ }
 
 

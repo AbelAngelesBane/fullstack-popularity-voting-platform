@@ -1,13 +1,14 @@
-import { FeaturedPoll, PollBase } from '@/types/types';
-import React, { useEffect, useState } from 'react';
-import { View, Image, Dimensions, Text } from 'react-native';
+import { FeaturedPoll } from '@/types/types';
+import React, { useState } from 'react';
+import { View, Dimensions, Text } from 'react-native';
 import Carousel from 'react-native-reanimated-carousel';
+import { Image } from 'expo-image';
 
 const { width: screenWidth } = Dimensions.get('window');
 
 
 
-const AutoCarousel = ({polls}:{polls:FeaturedPoll[]}) => {
+const AutoCarousel = ({ polls }: { polls: FeaturedPoll[] }) => {
     const [selectedItem, setSelectedItem] = useState(0)
     // useEffect((
 
@@ -29,18 +30,18 @@ const AutoCarousel = ({polls}:{polls:FeaturedPoll[]}) => {
                             <Text className=' text-white/70 text-center bg-black/30 p-2 rounded-full'>{item.name}</Text>
                         </View>
                         <Image
-                            source={{ uri: item.banner ??  "https://picsum.photos/id/1/800/400"}}
-                            className="w-full h-full rounded-2xl z-0"
-                            resizeMode="cover"
+                            source={{ uri: item.banner ?? "https://picsum.photos/id/1/800/400" }}
+                            style={{ width: "100%", height: "100%", borderRadius:10}}
+                            alt={item.banner ?? "Banner"}
                         />
                     </View>
 
                 )}
             />
             <View className='flex-row gap-1 mt-2'>
-            {polls.map((item, index) => (
-                <View key={index} className={`size-2 ${index === selectedItem ? "bg-white" : "bg-slate-500"} rounded-full`}/>
-            ))}
+                {polls.map((item, index) => (
+                    <View key={index} className={`size-2 ${index === selectedItem ? "bg-white" : "bg-slate-500"} rounded-full`} />
+                ))}
             </View>
 
         </View>

@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { clearUser } from './storage';
 
