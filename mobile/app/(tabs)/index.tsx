@@ -80,7 +80,10 @@ const ActivePollsCard =({polls}:{polls:PollBase[]})=>{
   return(
 
     polls.map((poll)=>(
-      <View key={poll.id} className='flex flex-row h-18 w-full bg-background-light rounded-xl mt-2 p-2 gap-2'>
+      <Pressable 
+        key={poll.id} 
+        className='flex flex-row h-18 w-full bg-background-light rounded-xl mt-2 p-2 gap-2'
+        onPress={()=>router.push(`/poll/${poll.id}`)}>
          <Player 
             ref={playerRef} 
             icon={IC_CATEGS[poll.category.title.toLowerCase()] ?? IC_CATEGS.other }
@@ -89,7 +92,7 @@ const ActivePollsCard =({polls}:{polls:PollBase[]})=>{
         <Text className='text-text-primary text-wrap break-words max-h-10'>{poll.name}</Text>
         <Text className='text-text-secondary text-xs'>{dateFormatter({date:poll.deadline})}</Text>
       </View>
-      </View>
+      </Pressable>
     ))
 
   )

@@ -52,7 +52,10 @@ export async function signUp(req: Request, res: Response) {
         "Signup successful. Please check your email for the 6-digit code.",
       data,
     });
-  } catch (error) {
+  } catch (error:any) {
+    if(error.statusCode === 422 || error.code === "P2002"){
+      res.status(422).json({ error: "username unavailable" });
+    }
     console.log("Error in signup", error);
     return res.status(500).json({ error: "Signup failed" });
   }
