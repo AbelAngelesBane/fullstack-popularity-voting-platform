@@ -1,10 +1,12 @@
-import { View, Text, ScrollView, Pressable, TextInput } from 'react-native'
+
+
+import { View, Text, Pressable, ScrollView, TextInput } from 'react-native'
 import React from 'react'
+import { router, useLocalSearchParams } from 'expo-router'
 import Ionicons from '@react-native-vector-icons/ionicons'
-import { router } from 'expo-router'
 
-
-const ExplorePollsScreen = () => {
+const PollDetailScreen = () => {
+    const {id}=useLocalSearchParams()
   return (
     <ScrollView className='flex-1 p-4 bg-background' contentContainerStyle={{paddingBottom:140}} showsVerticalScrollIndicator={false}>
       {/* Search Bar */}
@@ -27,4 +29,4 @@ const ExplorePollsScreen = () => {
   )
 }
 
-export default ExplorePollsScreen
+export default PollDetailScreen

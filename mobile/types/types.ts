@@ -123,3 +123,10 @@ export interface MyVotesResponse {
     hasMore: boolean;
   };
 }
+
+export interface MyProfile{
+  id:string, 
+  name:string, 
+  image:string, 
+  email:string
+}

@@ -2,7 +2,7 @@
 import { api } from "@/lib/api"
 import { saveUserData } from "@/lib/storage";
 import { signInSchema, signupSchema } from "@/schema/schemas";
-import { OtpResponse, SignInResponse, SignupResponse, VerifyOtpParams } from "@/types/types";
+import { MyProfile, OtpResponse, SignInResponse, SignupResponse, VerifyOtpParams } from "@/types/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import z from "zod";
@@ -16,7 +16,7 @@ export const useAuth = () => {
     const {data:myProfile, isFetching:isLoadingProfile} = useQuery({
         queryKey:["myprofile"],
         queryFn:async()=>{
-            const data = await api.get<{id:string, name:string, image:string, email:string}>("/user/myprofile")
+            const data = await api.get<MyProfile>("/user/myprofile")
             return data.data
         }
     })
@@ -58,6 +58,15 @@ export const useAuth = () => {
         }
     })
 
+    const updateProfileMutation=useMutation({
+        mutationFn:async(body:{name:string, image:string})=>{
+            const data = api.post("/user/profile",body);
+            return data
+        },
+        onSuccess:()=>{queryClient.refetchQueries({queryKey:["myprofile"]})}
+        
+    })
+
     return { 
         signUpMutation, 
         isSigningUp: signUpMutation.isPending, 
@@ -68,7 +77,9 @@ export const useAuth = () => {
         signInMutation,
         isSigningIn:signInMutation.isPending,
         isLoadingProfile,
-        myProfile
+        myProfile,
+        updateProfileMutation,
+        isUpdatingProfile:updateProfileMutation.isPending
     }
 
 }

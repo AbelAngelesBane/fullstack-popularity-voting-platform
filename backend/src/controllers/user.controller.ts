@@ -361,12 +361,14 @@ export async function updateUser(req: Request, res: Response) {
   try {
     const {id} = req.user;
     const {image, name} =  req.body;
-    if(!image || !name)return res.status(400).json({error:"Nothing to return"});
+    if(image === null || name === null)return res.status(400).json({error:"Nothing to update"});
     let profile:Profile = {};
 
 
-    if(image)profile.image = image;
-    if(name)profile.name = name;
+    if(image !== undefined)profile.image = image;
+    if(name !== undefined)profile.name = name;
+
+    if(!image && !name)return res.status(400).json({error:"Nothing to update"})
 
     const result = await prisma.user.update({
       where:{
@@ -376,7 +378,12 @@ export async function updateUser(req: Request, res: Response) {
     })
 
     return res.status(200).json({data:result})
-  } catch (error) {
+  } catch (error:any) {
+    console.log("error in updating", error)
+      if(error.statusCode === 422 || error.code === "P2002"){
+      res.status(422).json({ error: "username unavailable" });
+    }
+    
     return res.status(500).json({ error: "Internal server error" });    
   }
 }

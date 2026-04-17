@@ -11,7 +11,7 @@ import z from 'zod'
 import { signupSchema } from '@/schema/schemas'
 import { AxiosError } from 'axios'
 import { toast } from 'sonner-native';
-import { CONNECTION_ERROR, INVALID_CREDENTIALS, SOMETHING_WENT_WRONG } from '@/contants/errors'
+import { CONNECTION_ERROR, INVALID_CREDENTIALS, SOMETHING_WENT_WRONG, USERNAME_UNAVAILABLE } from '@/contants/errors'
 
 
 
@@ -73,7 +73,10 @@ const SignupScreen = () => {
                         const errorData: any = axiosError.response.data;
                         if (errorData.error === "Email already in use. Please login instead.") {
                             setError({ message: INVALID_CREDENTIALS });
-                        } else {
+                        } else if(errorData.error === "username unavailable"){
+                            setError({message:USERNAME_UNAVAILABLE})
+                        } 
+                        else {
                             toast.error(SOMETHING_WENT_WRONG)
                         }
                     }
