@@ -17,7 +17,7 @@ const VoteScreen = () => {
   const queryClient = useQueryClient()
   const [loaded, setLoadedItems] = useState(0)
   const [allVotes, setAllVotes] = useState<UserVote[]>([])
-  const { data, isLoading } = useVotes({ loaded })
+  const { data, isLoading,isError } = useVotes({ loaded })
   //adding to list, for showmore button
   const [isAdding, setIsAdding] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -54,6 +54,11 @@ const VoteScreen = () => {
 
     setIsRefreshing(false);
   }
+
+  
+  
+
+
   return (
     <View className='p-4 bg-background flex-1'>
         <View className='flex-row'>
@@ -64,6 +69,8 @@ const VoteScreen = () => {
         </View>
         
       {isLoading ? <VoteCardSkeleton/> :
+      isError ? (
+        <ErrorVotes handleRefresh={onRefresh}/>) :
         <FlatList
           data={allVotes}
           keyExtractor={(item) => item.id}
@@ -103,6 +110,22 @@ const VotesCard = ({ vote }: { vote: UserVote }) => {
         <Text className='text-xs text-text-secondary'>Ends: {dateFormatter({ date: vote.poll.deadline })}</Text>
       </View>
     </View>
+  )
+}
+
+const ErrorVotes = ({handleRefresh}:{handleRefresh:()=>void})=>{
+  return(
+     <View className='my-40 justify-center items-center gap-4'>
+      <View className='flex-row gap-2'>
+        <Text className='text-2xl text-primary font-light'>Ooops!</Text>
+        <Text className='text-2xl text-text-primary font-light'>Something went wrong!</Text>
+      </View>
+      <Pressable 
+      onPress={handleRefresh}
+      className='bg-white w-[40%] h-30 items-center justify-center rounded-xl p-2'>
+        <Text className='font-light'>Refresh</Text>
+      </Pressable>
+    </View>   
   )
 }
 

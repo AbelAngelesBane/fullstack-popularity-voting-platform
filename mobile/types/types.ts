@@ -130,3 +130,34 @@ export interface MyProfile{
   image:string, 
   email:string
 }
+export interface Nominee {
+  id: string;
+  pollId: string;
+  nomineeId: string;
+  name: string;
+  bio: string;
+  avatar: string;
+  votes: number;
+}
+export interface PollDetail {
+  id: string;
+  authorId: string;
+  editedById: string;
+  category: string;
+  name: string;
+  createdAt: string; 
+  deadline: string;
+  banner:string;
+  updatedAt: string;
+  active: boolean;
+  archived: boolean;
+  archivedAt: string | null;
+  totalVotes: number;
+  nominees: Nominee[];
+}
+
+export interface GetPollResponse {
+  data: {
+    response: PollDetail;
+  };
+}

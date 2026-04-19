@@ -273,6 +273,7 @@ export async function getPollById(req: Request, res: Response) {
       archived: poll.archived,
       archivedAt: poll.archivedAt,
       totalVotes,
+      banner:poll.banner,
       nominees: poll.options.map((item) => {
         return {
           id: item.id,
