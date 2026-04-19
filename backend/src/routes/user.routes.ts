@@ -1,7 +1,7 @@
 import {Router} from "express";
 import { authMiddleware } from "../middlewares/auth.middleware";
 import { registerVote, addComment, getPollComments, searchPoll, getHomeFeed, getVotes, getCurrentUser, updateUser } from "../controllers/user.controller";
-
+import { getPollById, updatePolls } from "../controllers/admin.controller";
 const router = Router()
 
 router.use(authMiddleware)
@@ -13,7 +13,9 @@ router.get("/search", searchPoll);
 router.get("/home", getHomeFeed);
 router.get("/votes", getVotes); //for feed
 router.get("/myprofile", getCurrentUser);
-router.post("/profile", updateUser)
+router.post("/profile", updateUser);
+router.post("/poll/:pollId", updatePolls);
+router.get("/poll/:pollId", getPollById)
 
 
 export default router

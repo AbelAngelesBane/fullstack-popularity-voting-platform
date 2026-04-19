@@ -295,6 +295,7 @@ export async function getHomeFeed(req: Request, res: Response) {
        prisma.poll.findMany({
         where: {
           active: true,
+          archived:false
         },
         include:{
           category:true,
