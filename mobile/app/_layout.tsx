@@ -6,6 +6,7 @@ import React, { useEffect, useState } from "react";
 import { Toaster } from "sonner-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { clearUser, getUserData } from "@/lib/storage";
+import { pusher } from "@/lib/pusher";
 
 const queryClient = new QueryClient({
   queryCache: new QueryCache({
@@ -19,6 +20,21 @@ const queryClient = new QueryClient({
     }
   })
 });
+
+const setup = async () => {
+      try {
+        await pusher.init({
+          apiKey: process.env.EXPO_PUBLIC_PUSHER_KEY!,
+          cluster: "ap1"
+        });
+        await pusher.connect();
+        console.log("Pusher Ready");
+      } catch (e) {
+        console.error("Pusher Init Failed", e);
+      }
+    };
+
+
 
 // here's my dilemma.. and approach.. ill reseach abt it later
 // i want the user to still open the app when no connection.. My approach..
@@ -48,7 +64,7 @@ export default function RootLayout() {
         setIsReady(true);
       }
     };
-
+    setup();
     prepareApp();
   }, []);
 

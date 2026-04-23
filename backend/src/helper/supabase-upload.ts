@@ -1,5 +1,5 @@
-import { supabase } from "../config/supabase-config";
 import path from "path";
+import { supabase } from "../config/supabase-config";
 
 export const uploadToSupabase = async (file: Express.Multer.File): Promise<string> => {
     const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`;

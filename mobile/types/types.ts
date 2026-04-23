@@ -161,3 +161,28 @@ export interface GetPollResponse {
     response: PollDetail;
   };
 }
+
+export interface Author {
+  name: string;
+  image: string;
+}
+
+export interface Comment {
+  id: string;
+  text: string;
+  createdAt: string; // or Date if you parse it immediately
+  authorId: string;
+  pollId: string;
+  author: Author;
+}
+
+export interface Pagination {
+  totalCount: number;
+  currentPage: number;
+  hasMore: boolean;
+}
+
+export interface CommentResponse {
+  comments: Comment[];
+  pagination: Pagination;
+}

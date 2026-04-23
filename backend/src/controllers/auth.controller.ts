@@ -204,7 +204,7 @@ export async function resendOTP(req: Request, res: Response) {
 
 export async function deleteAccount(req: Request, res: Response) {
   try {
-    const { id } = req.user;
+    const { id } = req.user!;
 
     //Im keeping the votes (set to null), but comments are set to cascade, i need them counted still
     await prisma.user.delete({
