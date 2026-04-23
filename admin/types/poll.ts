@@ -96,3 +96,12 @@ export interface PollCommentsResponse {
   comments: PollComment[];
   pagination: Pagination;
 }
+
+export interface Category {
+  id: string;
+  title: string;
+}
+
+export interface CreateCategoryResponse {
+  data: Category;
+}

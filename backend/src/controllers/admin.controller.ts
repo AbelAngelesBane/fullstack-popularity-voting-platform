@@ -16,8 +16,8 @@ interface PollUpdateInput {
 
 const weights = {
   FREE: 1,
-  BASIC: 30,
-  PREMIUM: 80,
+  BASIC: 15,
+  PREMIUM: 30,
 };
 
 export interface CreatePollInput {
@@ -119,29 +119,33 @@ export async function getPolls(req: Request, res: Response) {
 
 export async function createPolls(req: Request, res: Response) {
   try {
-    const { id } = req.user;
+    const { id } = req.user!;
 
-    const { name, categoryId, deadline, nomineeIds, banner } = req.body;
+    const { name, categoryId, deadline, nomineeIds} = req.body;
+    const banner = req.file;
 
     if (
-      !name ||
-      !categoryId ||
-      !deadline ||
-      !nomineeIds ||
+      !name || name === undefined ||
+      !categoryId || categoryId === undefined ||
+      !deadline || deadline === undefined ||
+      !nomineeIds || nomineeIds === undefined ||
+      !banner || banner === undefined ||
       nomineeIds.length < 2
     ) {
       return res.status(400).json({
         error:
-          "Bad request. Please provide a name, deadline, category, and at least 2 nominees.",
+          "Bad request. Please provide a name, deadline, banner, category, and at least 2 nominees.",
       });
     }
+    
+    const parsedBanner =await uploadToSupabase(banner)
 
     const poll = await prisma.poll.create({
       data: {
         name,
         authorId: id,
         categoryId: categoryId,
-        banner: banner || null,
+        banner: parsedBanner ?? null,
         deadline: new Date(deadline).toISOString(),
         options: {
           create: nomineeIds.map((id: string) => ({
@@ -158,7 +162,7 @@ export async function createPolls(req: Request, res: Response) {
       data: poll,
     });
   } catch (error) {
-    console.log(error);
+    console.log("Error creating poll",error);
     return res.status(500).json({ error: "Internal server error" });
   }
 }
@@ -168,7 +172,7 @@ export async function updatePolls(req: Request, res: Response) {
     //For now, all admins can edit.
     const { name, deadLine, isArchived, isActive } = req.body;
     const { pollId } = req.params;
-    const { id } = req.user;
+    const { id } = req.user!;
 
     if (Object.keys(req.body).length === 0) {
       return res.status(400).json({ error: "Nothing to update" });
@@ -235,10 +239,11 @@ export async function updatePolls(req: Request, res: Response) {
 }
 export async function getPollById(req: Request, res: Response) {
   try {
+    const {id} = req.user
     const { pollId } = req.params as { pollId: string };
     if (!pollId)
       return res.status(400).json({ error: "Required param missing" });
-    const poll = await prisma.poll.findFirst({
+    const [poll, userVotes] = await Promise.all([prisma.poll.findFirst({
       where: {
         id: pollId,
       },
@@ -254,10 +259,17 @@ export async function getPollById(req: Request, res: Response) {
         },
         comments: true,
       },
-    });
+    }),
+    await prisma.vote.findMany({
+        where:{
+          pollId,
+          userId:id
+        }
+      })
+  ])
     if (!poll) return res.status(404).json({ error: "Poll not found" });
     const totalVotes = poll?.options.reduce(
-      (init, opt) => init + opt._count.votes,
+      (init:number, opt:any) => init + opt._count.votes,
       0,
     );
     const response = {
@@ -274,7 +286,8 @@ export async function getPollById(req: Request, res: Response) {
       archivedAt: poll.archivedAt,
       totalVotes,
       banner:poll.banner,
-      nominees: poll.options.map((item) => {
+      userVotes,
+      nominees: poll.options.map((item:any) => {
         return {
           id: item.id,
           pollId: item.pollId,
@@ -344,6 +357,24 @@ export async function registerNominees(req: Request, res: Response) {
     return res.status(500).json({ error: "Internal server error" });
   }
 }
+
+export async function deleteComment(req: Request, res: Response) {
+  try {
+    const {commentId} = req.body;
+    if(!commentId || commentId === undefined)return res.status(400).json({ error: "Comment ID required" });
+    const deleteUser = await prisma.comment.deleteMany({
+    where: {
+      id:commentId
+    },
+    });
+    if(deleteUser.count === 0){
+      return res.status(400).json({error:"Comment not found"})
+    }
+    res.status(200).json({message:"ok"})
+  } catch (error) {
+    return res.status(500).json({ error: "Internal server error" });
+  }
+} 
 
 export async function searchNominees(req: Request, res: Response) {
   const limit = 7;

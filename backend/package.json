@@ -7,14 +7,15 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "tsx watch src/server.ts",
     "start": "node src/server.ts",
-    "build": "tsc"
+    "build": "tsc",
+    "migrate:diff": "PRISMA_SCHEMA_ENGINE_TYPE=wasm prisma migrate diff --from-empty --to-schema prisma/schema.prisma --script"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@prisma/adapter-mariadb": "^7.5.0",
-    "@prisma/client": "^7.5.0",
+    "@prisma/adapter-mariadb": "^7.7.0",
+    "@prisma/client": "^7.7.0",
     "@supabase/supabase-js": "^2.99.2",
     "better-auth": "^1.5.5",
     "dotenv": "^17.3.1",
@@ -24,6 +25,7 @@
     "multer": "^2.1.1",
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.2",
+    "pusher": "^5.3.3",
     "resend": "^6.9.3"
   },
   "devDependencies": {
@@ -32,10 +34,13 @@
     "@types/node": "^25.5.0",
     "@types/nodemailer": "^7.0.11",
     "nodemon": "^3.1.14",
-    "prisma": "^7.5.0",
+    "prisma": "^7.7.0",
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
+  },
+  "overrides": {
+    "@prisma/engines": "6.19.3"
   },
   "description": ""
 }

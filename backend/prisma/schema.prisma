@@ -1,6 +1,5 @@
-
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../src/generated/prisma"
 }
 
@@ -8,26 +7,24 @@ datasource db {
   provider = "mysql"
 }
 
-
 model User {
   id            String    @id @default(uuid())
   email         String    @unique
   name          String?   @unique
-  role          String?   @default("user") 
+  role          String?   @default("user")
   emailVerified Boolean   @default(false)
   image         String?   @db.Text
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  banned Boolean?
-
-  
-  createdPolls  Poll[]    @relation("pollAuthor")
-  editedPolls   Poll[]    @relation("pollEditor")
+  banned        Boolean?
+  accounts      Account[]
   comments      Comment[]
   invoices      Invoice[]
-  votes         Vote[]
+  createdPolls  Poll[]    @relation("pollAuthor")
+  editedPolls   Poll[]    @relation("pollEditor")
   sessions      Session[]
-  accounts      Account[]
+  votes         Vote[]
+  notifications Notification[] 
 
   @@map("user")
 }
@@ -35,7 +32,7 @@ model User {
 model Session {
   id        String   @id
   expiresAt DateTime
-  token     String
+  token     String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   ipAddress String?  @db.Text
@@ -43,7 +40,7 @@ model Session {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([token])
+  @@index([userId], map: "session_userId_fkey")
   @@map("session")
 }
 
@@ -52,7 +49,6 @@ model Account {
   accountId             String    @db.Text
   providerId            String    @db.Text
   userId                String
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   accessToken           String?   @db.Text
   refreshToken          String?   @db.Text
   idToken               String?   @db.Text
@@ -62,7 +58,9 @@ model Account {
   password              String?   @db.Text
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId], map: "account_userId_fkey")
   @@map("account")
 }
 
@@ -77,37 +75,38 @@ model Verification {
   @@map("verification")
 }
 
-
 model Poll {
   id         String    @id @default(uuid())
   authorId   String?
-  editedById   String?
+  editedById String?
   categoryId String
-  name String
-  createdAt DateTime @default(now())
-  deadline  DateTime
-  updatedAt   DateTime  @updatedAt
-  active Boolean @default(false)
-  archived Boolean @default(false)
-  banner String?
-
+  name       String
+  createdAt  DateTime  @default(now())
+  deadline   DateTime
+  updatedAt  DateTime  @updatedAt
+  active     Boolean   @default(false)
+  archived   Boolean   @default(false)
+  notified Boolean @default(false)
+  banner     String?
   archivedAt DateTime?
-  author     User?     @relation("pollAuthor",fields: [authorId], references: [id], onDelete: SetNull)
-  editedBy    User?     @relation("pollEditor", fields: [editedById], references: [id], onDelete: SetNull)
-  category   Category  @relation(fields: [categoryId], references: [id])
   comments   Comment[]
-  options    Option[]
   invoices   Invoice[]
+  options    Option[]
+  author     User?     @relation("pollAuthor", fields: [authorId], references: [id])
+  category   Category  @relation(fields: [categoryId], references: [id])
+  editedBy   User?     @relation("pollEditor", fields: [editedById], references: [id])
   votes      Vote[]
-  
-  
-  @@map("poll")
+
   @@index([deadline])
+  @@index([authorId], map: "poll_authorId_fkey")
+  @@index([categoryId], map: "poll_categoryId_fkey")
+  @@index([editedById], map: "poll_editedById_fkey")
+  @@map("poll")
 }
 
 model Category {
   id    String @id @default(uuid())
-  title String 
+  title String
   polls Poll[]
 
   @@map("category")
@@ -127,11 +126,12 @@ model Option {
   id        String  @id @default(uuid())
   pollId    String
   nomineeId String
-  poll      Poll    @relation(fields: [pollId], references: [id], onDelete: Cascade)
   nominee   Nominee @relation(fields: [nomineeId], references: [id], onDelete: Cascade)
+  poll      Poll    @relation(fields: [pollId], references: [id], onDelete: Cascade)
   votes     Vote[]
 
   @@unique([pollId, nomineeId])
+  @@index([nomineeId], map: "option_nomineeId_fkey")
   @@map("option")
 }
 
@@ -140,27 +140,31 @@ model Comment {
   text      String   @db.Text
   createdAt DateTime @default(now())
   authorId  String
-  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
   pollId    String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
   poll      Poll     @relation(fields: [pollId], references: [id], onDelete: Cascade)
 
+  @@index([authorId], map: "comment_authorId_fkey")
+  @@index([pollId], map: "comment_pollId_fkey")
   @@map("comment")
 }
-//There is a pollId here as I want to make pollIdxDeviceId unique later
+
 model Vote {
   id        String      @id @default(uuid())
   deviceId  String?
   tier      PricingTier @default(FREE)
   createdAt DateTime    @default(now())
-  weight Int
-
+  weight    Int
   userId    String?
-  user      User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
   pollId    String
-  poll      Poll        @relation(fields: [pollId], references: [id], onDelete: Cascade)
   optionId  String
   option    Option      @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  poll      Poll        @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  user      User?       @relation(fields: [userId], references: [id])
 
+  @@index([optionId], map: "vote_optionId_fkey")
+  @@index([pollId], map: "vote_pollId_fkey")
+  @@index([userId], map: "vote_userId_fkey")
   @@map("vote")
 }
 
@@ -168,19 +172,33 @@ model Invoice {
   id          String      @id @default(uuid())
   amount      Decimal     @db.Decimal(10, 2)
   currency    String      @default("PHP")
-  status      String      @default("PENDING") 
-  referenceId String?     @unique //fr xendit
+  status      String      @default("PENDING")
+  referenceId String?     @unique
   tier        PricingTier
   createdAt   DateTime    @default(now())
-
   userId      String?
-  user        User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
-
   pollId      String?
-  poll        Poll?       @relation(fields: [pollId], references: [id], onDelete: SetNull)
+  poll        Poll?       @relation(fields: [pollId], references: [id])
+  user        User?       @relation(fields: [userId], references: [id])
 
+  @@index([pollId], map: "invoice_pollId_fkey")
+  @@index([userId], map: "invoice_userId_fkey")
   @@map("invoice")
 }
+
+model Notification{
+  id String @id @default(uuid())
+  createdAt   DateTime    @default(now())
+  type String
+  path String
+  userId String
+  message String
+  isRead    Boolean  @default(false)
+  user User @relation(fields: [userId], references: [id])
+  @@index([userId])
+  @@map("notification")
+}
+
 
 enum PricingTier {
   FREE

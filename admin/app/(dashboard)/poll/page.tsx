@@ -2,7 +2,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import TextareaAutosize from 'react-textarea-autosize';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import { Calendar1Icon, Check, Cross, ImageIcon, ImagePlus, Loader2, Plus, Search, SearchIcon, Trash2, } from "lucide-react"
+import { Calendar1Icon, ImageIcon, ImagePlus, Loader2, Plus, Search, SearchIcon, Trash2 } from "lucide-react"
 import {
     InputGroup,
     InputGroupAddon,
@@ -10,7 +10,7 @@ import {
 
 } from "@/components/ui/input-group"
 import { FieldError } from "@/components/ui/field";
-import { createNomineeProfile, createPoll, fetchPollAction, searchNominees } from "@/app/actions/poll"
+import { addCategory, createNomineeProfile, createPoll, fetchPollAction, getCategories, searchNominees } from "@/app/actions/poll"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { dateFormatter } from "@/lib/utils";
@@ -25,66 +25,19 @@ import { Controller, useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as React from "react"
 import { Calendar } from "@/components/ui/calendar"
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import {
     Popover,
     PopoverContent,
-    PopoverHeader,
     PopoverTrigger,
 } from "@/components/ui/popover"
-import { useSearchParams, useRouter, usePathname } from "next/navigation"; // Added these
+import { useSearchParams, useRouter, usePathname } from "next/navigation"; 
 import { Clock2Icon } from "lucide-react"
 import { format } from "date-fns";
-import { CreatePollParams, Nominees, PollData, PollResponse } from "@/types/poll";
+import { Category, CreatePollParams, Nominees, PollData, PollResponse } from "@/types/poll";
 import { toast } from "sonner";
 import Link from "next/link";
 
-
-
-
-
-
-const categories = [
-    {
-        "id": "13be2e82-1215-40e0-9e3b-35c5dd078b0d",
-        "title": "Business"
-    },
-    {
-        "id": "4d7c45b3-f872-43b1-9e87-c206bb49066b",
-        "title": "Pageantry"
-    },
-    {
-        "id": "545aace6-22aa-47f4-8f1c-5e5d0321f30e",
-        "title": "Lifestyle"
-    },
-    {
-        "id": "7f1457f0-227d-49dc-a361-19efd155a326",
-        "title": "Film"
-    },
-    {
-        "id": "aaeb79b5-6035-4d34-8c00-9793caf1e8af",
-        "title": "Television"
-    },
-    {
-        "id": "ac08c2c1-6d3f-4f34-bcf8-a5da81489e51",
-        "title": "Social Media"
-    },
-    {
-        "id": "b1e9a656-a009-4ee2-899b-4563cc83c6c8",
-        "title": "Politics"
-    },
-    {
-        "id": "b7064947-354f-4d97-a44a-72ca0325bd2c",
-        "title": "Music"
-    },
-    {
-        "id": "bfc0daf3-6314-415e-917b-bc59e1599b30",
-        "title": "Drama"
-    }
-]
 export default function PollsView() {
-
-
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -118,7 +71,6 @@ export default function PollsView() {
         router.push(`${pathname}?${params.toString()}`, { scroll: false });
     };
 
-
     return (
         <main className="flex min-h-screen">
             <div className="flex-1 grid grid-cols-2 gap-4">
@@ -134,13 +86,12 @@ export default function PollsView() {
                         </InputGroupAddon>
                     </InputGroup>
 
-                    {/* UPDATED TOGGLE GROUP */}
                     <ToggleGroup
                         size="lg"
                         variant="outline"
                         type="single"
-                        value={currentFilter} // Controlled by the URL
-                        onValueChange={handleFilterChange} // Updates the URL
+                        value={currentFilter} 
+                        onValueChange={handleFilterChange} 
                     >
                         <ToggleGroupItem
                             value="all"
@@ -160,7 +111,7 @@ export default function PollsView() {
                         >
                             Inactive
                         </ToggleGroupItem>
-                                                <ToggleGroupItem
+                        <ToggleGroupItem
                             value="archived"
                             className="data-[state=on]:bg-text-primary data-[state=on]:text-white"
                         >
@@ -197,6 +148,13 @@ function CreatePollCard() {
     const [searchQuery, setSearchQuery] = useState(""); 
     const [searchResult, setSearchResult] = useState<Nominees[] | []>();
     const [selectedCateg, setSelectedCategory] = useState<{ title: string, id: string }>()
+    
+    // Dynamic Categories State
+    const [categories, setCategories] = useState<Category[]>();
+    const [isCategoryLoading, setIsCategoryLoading] = useState(true);
+    const [newCategoryName, setNewCategoryName] = useState("");
+    const [isAddingCategory, setIsAddingCategory] = useState(false);
+    const [categoryError, setCategoryError] = useState<string | null>(null);
 
     const [date, setDate] = useState<Date | undefined>(() => {
         const nextDay = new Date();
@@ -214,7 +172,56 @@ function CreatePollCard() {
     const [bannerFile, setBannerFile] = useState<File | null>(null);
     const bannerInputRef = useRef<HTMLInputElement>(null);
 
+    // Fetch Categories from Backend
+// Fetch Categories from Backend
+const fetchCategories = async () => {
+        setIsCategoryLoading(true);
+        try {
+            const res = await getCategories();
+            
+            if (!("error" in res) && res.data) {
+                if (Array.isArray(res.data)) {
+                    setCategories(res.data);
+                } else {
+                    setCategories([res.data]);
+                }
+            }
+        } catch (err) {
+            toast.error("Failed to load categories");
+        } finally {
+            setIsCategoryLoading(false);
+        }
+    };
+    useEffect(() => {
+        fetchCategories();
+    }, []);
 
+    const handleAddCategory = async () => {
+        if (!newCategoryName.trim()) {
+            setCategoryError("Category name is required");
+            return;
+        }
+        setIsAddingCategory(true);
+        setCategoryError(null);
+        try {
+            const res = await addCategory(newCategoryName.trim());
+            
+            if (!("error" in res) && res.data) {
+                setCategories((prev) => prev ? [...prev, res.data] : [res.data]);
+                
+                toast.success("Category added successfully");
+                setNewCategoryName("");
+
+            } else {
+                console.log(res);
+                setCategoryError("Failed to add category");
+            }
+        } catch (err) {
+            toast.error("Something went wrong!");
+        } finally {
+            setIsAddingCategory(false);
+        }
+    };
 
     useEffect(() => {
         if (!searchQuery || searchQuery.trim() === "") {
@@ -222,10 +229,8 @@ function CreatePollCard() {
         }
         const delayDebounceFn = setTimeout(async () => {
             try {
-
                 const noms = await searchNominees({
                     searchInput: searchQuery,
-                    //o for now and ill implement the infinite scroll later
                     alreadyLoaded: 0
                 });
 
@@ -237,13 +242,10 @@ function CreatePollCard() {
             }
         }, 500);
 
-
         return () => clearTimeout(delayDebounceFn);
-
     }, [searchQuery]);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
-
 
     const nomineeForm = useForm({
         resolver: zodResolver(createNomineeSchema),
@@ -262,7 +264,6 @@ function CreatePollCard() {
             nomineeForm.setValue("avatar", file, { shouldValidate: true });
         }
     };
-
 
     const combineDateTime = (baseDate: Date | undefined, timeString: string) => {
         if (!baseDate) return null;
@@ -294,72 +295,68 @@ function CreatePollCard() {
                 toast.error("Something went wrong", { position: "top-center" })
             }
         })
-
     }
-const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-        // Create the local blob URL for immediate preview
-        setBannerPreview(URL.createObjectURL(file));
-        // Save the actual file object to send later
-        setBannerFile(file);
-    }
-};
 
-const handleCreatePoll = () => {
-    startCreatingPoll(async () => { 
-        const err = [];
-        if (!(selectedCateg?.id)) err.push("Category");
-        if (!pollName) err.push("Poll Name");
-        if (!date || !endTime) err.push("Date");
-        
-        if (err.length > 0) {
-            toast.error(`${err.length > 1 ? "Fields are" : "Field is"} required: ${err.join(", ")}`);
-            return; 
+    const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setBannerPreview(URL.createObjectURL(file));
+            setBannerFile(file);
         }
+    };
 
-        if (!selectedProfiles || selectedProfiles.length < 2) {
-            toast.error("Add at least two nominees.");
-            return;
-        }
-
-        const combinedDate = combineDateTime(date, endTime);
-
-        const formData = new FormData();
-
-        formData.append("name", pollName);
-        formData.append("categoryId", selectedCateg?.id ?? "");
-        formData.append("deadline", combinedDate ? combinedDate.toISOString() : "");
-
-        if (bannerFile) {
-            formData.append("banner", bannerFile);
-        }
-
-        selectedProfiles.forEach((profile) => {
-            formData.append("nomineeIds", profile.id);
-        });
-
-        try {
-
-            const data = await createPoll({ formData});
-            console.log("ajrhekajhdb", data)
-            if (data && !("error" in data)) {
-                setSelectedCategory(undefined);
-                setSelectedProfiles([]);
-                setPollName("");
-                setBannerFile(null);       
-                setBannerPreview(null);    
-                
-                toast.success("Poll launched!");
-            } else {
-                toast.error("Error creating poll");
+    const handleCreatePoll = () => {
+        startCreatingPoll(async () => { 
+            const err = [];
+            if (!(selectedCateg?.id)) err.push("Category");
+            if (!pollName) err.push("Poll Name");
+            if (!date || !endTime) err.push("Date");
+            if(!bannerFile || bannerFile === null)err.push("Banner")
+            
+            if (err.length > 0) {
+                toast.error(`${err.length > 1 ? "Fields are" : "Field is"} required: ${err.join(", ")}`);
+                return; 
             }
-        } catch (e) {
-            console.error("Submission Error:", e);
-            toast.error("Failed to launch poll");
-        }
-    });
-};
+
+            if (!selectedProfiles || selectedProfiles.length < 2) {
+                toast.error("Add at least two nominees.");
+                return;
+            }
+
+            const combinedDate = combineDateTime(date, endTime);
+            const formData = new FormData();
+
+            formData.append("name", pollName);
+            formData.append("categoryId", selectedCateg?.id ?? "");
+            formData.append("deadline", combinedDate ? combinedDate.toISOString() : "");
+            
+
+            if (bannerFile) {
+                formData.append("banner", bannerFile);
+            }
+
+            selectedProfiles.forEach((profile) => {
+                formData.append("nomineeIds", profile.id);
+            });
+
+            try {
+                const data = await createPoll({ formData});
+                if (data && !("error" in data)) {
+                    setSelectedCategory(undefined);
+                    setSelectedProfiles([]);
+                    setPollName("");
+                    setBannerFile(null);       
+                    setBannerPreview(null);    
+                    toast.success("Poll launched!");
+                } else {
+                    toast.error("Error creating poll");
+                }
+            } catch (e) {
+                console.error("Submission Error:", e);
+                toast.error("Failed to launch poll");
+            }
+        });
+    };
 
     return (
         <Card>
@@ -367,37 +364,31 @@ const handleCreatePoll = () => {
                 <h1 className="font-bold text-xl">Create New Poll</h1>
             </CardHeader>
             <CardContent className="space-y-2">
-                {/* Banner Upload Field */}
-<div className="space-y-1">
-    <Label className="font-bold text-lg">Poll Banner</Label>
-    <div 
-        className="w-full h-32 border-2 border-dashed rounded-md flex flex-col items-center justify-center cursor-pointer hover:bg-primary/5 overflow-hidden"
-        onClick={() => bannerInputRef.current?.click()} // Trigger the hidden input
-    >
-        {bannerPreview ? (
-            // Show the preview if an image is selected
-            <img src={bannerPreview} alt="Banner Preview" className="w-full h-full object-cover" />
-        ) : (
-            // Default placeholder if empty
-            <>
-                <ImageIcon className="text-muted-foreground" />
-                <p className="text-xs text-muted-foreground">Click to upload banner</p>
-            </>
-        )}
-    </div>
-    
-    {/* Hidden File Input */}
-    <input 
-        type="file" 
-        ref={bannerInputRef} 
-        className="hidden" 
-        accept="image/*" 
-        onChange={handleBannerChange} 
-    />
-</div>
+                <div className="space-y-1">
+                    <Label className="font-bold text-lg">Poll Banner</Label>
+                    <div 
+                        className="w-full h-32 border-2 border-dashed rounded-md flex flex-col items-center justify-center cursor-pointer hover:bg-primary/5 overflow-hidden"
+                        onClick={() => bannerInputRef.current?.click()}
+                    >
+                        {bannerPreview ? (
+                            <img src={bannerPreview} alt="Banner Preview" className="w-full h-full object-cover" />
+                        ) : (
+                            <>
+                                <ImageIcon className="text-muted-foreground" />
+                                <p className="text-xs text-muted-foreground">Click to upload banner</p>
+                            </>
+                        )}
+                    </div>
+                    <input 
+                        type="file" 
+                        ref={bannerInputRef} 
+                        className="hidden" 
+                        accept="image/*" 
+                        onChange={handleBannerChange} 
+                    />
+                </div>
                 <h2 className="font-bold text-lg">Add Nominees</h2>
 
-                {/*A POPUP DIALOG FOR CREATE NOMINEE*/}
                 <Dialog>
                     <DialogTrigger asChild>
                         <Button className="w-full">
@@ -425,7 +416,6 @@ const handleCreatePoll = () => {
                                     )} />
                                 </div>
                                 <div className="flex flex-col items-center gap-4">
-                                    {/* Image Preview Circle */}
                                     <Controller
                                         name="avatar"
                                         control={nomineeForm.control}
@@ -437,7 +427,6 @@ const handleCreatePoll = () => {
                                                 {
                                                     preview && <AvatarImage src={preview || ""} className="object-cover" />
                                                 }
-                                                    
                                                     <AvatarFallback className="bg-muted">
                                                         <ImagePlus className="size-8 text-muted-foreground" />
                                                     </AvatarFallback>
@@ -448,9 +437,6 @@ const handleCreatePoll = () => {
                                             </div>
                                         )}
                                     />
-
-
-                                    {/* Hidden File Input */}
                                     <input
                                         type="file"
                                         ref={fileInputRef}
@@ -459,9 +445,8 @@ const handleCreatePoll = () => {
                                         onChange={handleFileChange}
                                     />
                                 </div>
-                                <div className="grid  items-center gap-4">
+                                <div className="grid items-center gap-4">
                                     <Label htmlFor="name" className="text-right">Bio</Label>
-                                    {/* CONTROL FOR NOMINEE NAME */}
                                     <Controller
                                         name="bio"
                                         control={nomineeForm.control}
@@ -485,7 +470,7 @@ const handleCreatePoll = () => {
                                 </div>
                             </div>
                             <DialogFooter>
-                                <Button type="submit">{isCreatingProfile ? <Loader2 /> : "Save Nominee"}</Button>
+                                <Button type="submit">{isCreatingProfile ? <Loader2 className="animate-spin" /> : "Save Nominee"}</Button>
                             </DialogFooter>
                         </form>
                     </DialogContent>
@@ -504,86 +489,116 @@ const handleCreatePoll = () => {
                     </InputGroupAddon>
                 </InputGroup>
 
-                {/* This is the DIV for search Results */}
                 <div className="relative">
-                    {/* Use callback later */}
                     {(searchResult ?? []).length !== 0 && searchQuery !== "" &&
-                        <div className="absolute top-0 flex flex-col z-10 w-full bg-background border-2 rounded-b-sm px-2 overflow-y-scroll">
+                        <div className="absolute top-0 flex flex-col z-10 w-full bg-background border-2 rounded-b-sm px-2 overflow-y-scroll max-h-48">
                             {
                                 searchResult && searchResult.map((profile) => (
-                                    <div key={profile.id} className="h-12 overflow-hidden" onClick={() => {
+                                    <div key={profile.id} className="min-h-12 overflow-hidden border-b-2 hover:bg-primary/10 cursor-pointer p-2" onClick={() => {
                                     if (!selectedProfiles.some((p) => p.id === profile.id)) {
                                         setSelectedProfiles([...selectedProfiles, profile]);
                                         setSearchQuery("");
                                     } else {
                                         toast.error("Nominee already added");
                                         setSearchQuery("");
-}
+                                    }
                                     }}>
-                                        <div className="border-b-2 hover:bg-primary cursor-pointer rounded-sm w-full ">
-                                            <p className="text-lg">{profile.name}</p>
-                                            <p className="text-sm text-muted-foreground">{profile.bio}</p>
-                                        </div>
+                                        <p className="text-sm font-bold">{profile.name}</p>
+                                        <p className="text-xs text-muted-foreground line-clamp-1">{profile.bio}</p>
                                     </div>
                                 ))
                             }
-                            <button className="cursor-pointer">show more...</button>
+                            <button className="text-xs p-2 text-primary">show more...</button>
                         </div>
                     }
                 </div>
 
-                {/* DIV for the selected Nominees */}
-                <div className=" grid grid-cols-4 gap-2 border-b-2 pb-2">
+                <div className="grid grid-cols-4 gap-2 border-b-2 pb-2">
                     {selectedProfiles &&
                         selectedProfiles.map((profile) => (
                             <div key={profile.id} className="">
                                 <Card className="p-2 relative items-center h-40 overflow-hidden hover:bg-primary/50 hover:cursor-pointer">  
                                 <button onClick={() => {
-                                    if (selectedProfiles?.includes(profile)) {
-                                        const updated = selectedProfiles.filter((item) => item !== profile)
-                                        setSelectedProfiles(updated)
-                                    }
-                                    else {
-                                        setSelectedProfiles([...selectedProfiles, profile])
-                                    }
-                                }
-                                }>
-                                    <Trash2 className="absolute top-1 right-1 hover:scale-120" size={18}/>
+                                    const updated = selectedProfiles.filter((item) => item.id !== profile.id)
+                                    setSelectedProfiles(updated)
+                                }}>
+                                    <Trash2 className="absolute top-1 right-1 hover:scale-120 text-destructive" size={18}/>
                                 </button>                                  
 
-                                    <Avatar className="size-18">
+                                    <Avatar className="size-18 mx-auto">
                                         <AvatarImage
                                             src={profile.avatar}
                                             alt={profile.name}
-                                            className="grayscale"
+                                            className="object-cover"
                                         />
-                                        <AvatarFallback>{profile.name}</AvatarFallback>
-                                        <div className={` border border-primary size-5 items-center justify-center rounded-full absolute bottom-0 -right-1 ${selectedProfiles?.includes(profile) ? "bg-primary" : "bg-transparent"}`}>
-                                            {selectedProfiles?.includes(profile) && <Check color="white" className="size-5" />}
-                                        </div>
+                                        <AvatarFallback>{profile.name[0]}</AvatarFallback>
                                     </Avatar>
-                                    <p className="w-full text-center break-words">{profile.name}</p>
+                                    <p className="w-full text-center text-xs mt-2 break-words line-clamp-2">{profile.name}</p>
                                 </Card>
                             </div>))
                     }
                 </div>
-                {/* Select a category section */}
-                <div className="border-b-2 pb-2">
-                    <h2 className="font-bold text-lg">Select a Category</h2>
-                    <div className="grid grid-cols-5 gap-2 text-center md:grid-cols-2">
-                        {
-                            categories.map((categ) => (
-                                <div key={categ.id} className={`${categ === selectedCateg && "bg-primary border-primary-foreground"} border rounded-full hover:cursor-pointer hover:bg-primary/50`} onClick={() => {
-                                    if (selectedCateg !== categ) {
-                                        setSelectedCategory(categ)
-                                    }
-                                }}>
+
+                {/* Dynamic Categories Section */}
+                <div className="border-b-2 pb-2 space-y-3">
+                    <div className="flex items-center justify-between">
+                        <h2 className="font-bold text-lg">Select a Category</h2>
+                        
+                        {/* ADD CATEGORY DIALOG */}
+                        <Dialog>
+                            <DialogTrigger asChild>
+                                <Button size="sm" variant="outline" className="h-7 text-xs">
+                                    <Plus className="size-3 mr-1" /> New Category
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Add New Category</DialogTitle>
+                                    <DialogDescription>Create a new category for polls.</DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-4 py-4">
+                                    <div className="space-y-2">
+                                        <Label>Category Title</Label>
+                                        <Input 
+                                            placeholder="e.g. Sports" 
+                                            value={newCategoryName}
+                                            onChange={(e) => setNewCategoryName(e.target.value)}
+                                        />
+                                        {categoryError && <p className="text-xs text-destructive">{categoryError}</p>}
+                                    </div>
+                                </div>
+                                <DialogFooter>
+                                    <Button onClick={handleAddCategory} disabled={isAddingCategory}>
+                                        {isAddingCategory ? <Loader2 className="animate-spin" /> : "Add Category"}
+                                    </Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+                    </div>
+
+                    {isCategoryLoading ? (
+                        <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                            <Loader2 className="animate-spin size-4" /> Loading categories...
+                        </div>
+                    ) : (
+                        <div className="flex flex-wrap gap-2">
+                            {categories && categories.length !== 0 ? categories.map((categ) => (
+                                <div 
+                                    key={categ.id} 
+                                    className={`px-3 py-1 text-sm border rounded-full transition-all hover:cursor-pointer ${
+                                        selectedCateg?.id === categ.id 
+                                        ? "bg-primary text-primary-foreground border-primary" 
+                                        : "bg-background hover:bg-primary/10 border-input"
+                                    }`} 
+                                    onClick={() => setSelectedCategory(categ)}
+                                >
                                     <p>{categ.title}</p>
                                 </div>
-                            ))
-                        }
-                    </div>
+                            ))  : <p>Add a category</p>}
+                        </div>
+                    )}
                 </div>
+
                 <div>
                     <h2 className="font-bold text-lg">Add details</h2>
                     <div className="p-2 space-y-1">
@@ -592,75 +607,67 @@ const handleCreatePoll = () => {
                             value={pollName}
                             onChange={(e) => setPollName(e.target.value)}/>
                         <Popover>
-                            <p className="text-muted-foreground">Date End</p>
+                            <p className="text-muted-foreground mt-2">Date End</p>
                             <PopoverTrigger asChild>
                                 <Button variant="outline" className="w-full text-muted-foreground justify-between">
-                                    <p>  {date ? format(date, "PPP") : "No date selected"}</p>
+                                    <p>{date ? format(date, "PPP") : "No date selected"}</p>
                                     <Calendar1Icon />
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent>
-                                <PopoverHeader>
-                                </PopoverHeader>
-                                <div>
-                                    <Card size="sm" className="mx-auto w-fit">
-                                        <CardContent>
-                                            <Calendar
-                                                mode="single"
-                                                selected={date}
-                                                onSelect={setDate}
-                                                className="p-0"
-                                                disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
-                                            />
-                                        </CardContent>
-                                        <CardFooter className="border-t bg-card pt-4">
-                                            <FieldGroup className="flex gap-4">
-                                                <Field>
-                                                    <FieldLabel htmlFor="time-to">End Time</FieldLabel>
-                                                    <InputGroup>
-                                                        <InputGroupInput
-                                                            id="time-to"
-                                                            type="time"
-                                                            step="1"
-                                                            value={endTime}
-                                                            onChange={(e) => setEndTime(e.target.value)}
-                                                            className="appearance-none [&::-webkit-calendar-picker-indicator]:hidden"
-                                                        />
-                                                        <InputGroupAddon>
-                                                            <Clock2Icon className="size-4 text-muted-foreground" />
-                                                        </InputGroupAddon>
-                                                    </InputGroup>
-                                                </Field>
-                                            </FieldGroup>
-                                        </CardFooter>
-                                    </Card>
-                                </div>
+                            <PopoverContent className="w-auto p-0" align="start">
+                                <Card size="sm" className="border-none shadow-none">
+                                    <CardContent className="p-3">
+                                        <Calendar
+                                            mode="single"
+                                            selected={date}
+                                            onSelect={setDate}
+                                            disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
+                                        />
+                                    </CardContent>
+                                    <CardFooter className="border-t bg-muted/50 p-3">
+                                        <div className="flex flex-col gap-2 w-full">
+                                            <Label htmlFor="time-to" className="text-xs">End Time</Label>
+                                            <InputGroup>
+                                                <InputGroupInput
+                                                    id="time-to"
+                                                    type="time"
+                                                    step="1"
+                                                    value={endTime}
+                                                    onChange={(e) => setEndTime(e.target.value)}
+                                                />
+                                                <InputGroupAddon>
+                                                    <Clock2Icon className="size-4 text-muted-foreground" />
+                                                </InputGroupAddon>
+                                            </InputGroup>
+                                        </div>
+                                    </CardFooter>
+                                </Card>
                             </PopoverContent>
                         </Popover>
                     </div>
                 </div>
             </CardContent>
-            <CardFooter>
-                <Button className="border-accent flex-1 cursor-pointer bg-gray-200" variant="ghost">Cancel</Button>
-                <Button className="flex-1 cursor-pointer bg-primary" variant="ghost" onClick={()=>handleCreatePoll()}>{isCreatingPoll ? <Loader2/> :"Launch Poll"}</Button>
+            <CardFooter className="gap-2">
+                <Button className="flex-1 cursor-pointer" variant="outline">Cancel</Button>
+                <Button className="flex-1 cursor-pointer bg-primary" onClick={handleCreatePoll} disabled={isCreatingPoll}>
+                    {isCreatingPoll ? <Loader2 className="animate-spin" /> : "Launch Poll"}
+                </Button>
             </CardFooter>
         </Card>
     )
 }
 
 function PollCard({ data }: { data: PollData }) {
-
     const isActive = data.active
     return (
-        <Card className="flex-1 py-8 hover:bg-primary/50 cursor-pointer hover:scale-110">
-
+        <Card className="flex-1 py-8 hover:bg-primary/10 transition-all cursor-pointer hover:scale-[1.02]">
             <CardContent className="space-y-2">
                 <CardTitle className="font-bold">{data.name}</CardTitle>
                 <div>
                     <Badge variant={`${isActive ? "default" : "destructive"}`}>{isActive ? "Active" : "Inactive"}</Badge>
-                    {/* Number of noms */}
-                    {/* <div><User/> <p>{data.}</p></div> */}
-                    <p><span className="font-bold">Ends:</span> {dateFormatter({ date: data.deadline })}</p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                        <span className="font-bold text-foreground">Ends:</span> {dateFormatter({ date: data.deadline })}
+                    </p>
                 </div>
             </CardContent>
         </Card>

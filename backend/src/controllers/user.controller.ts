@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 
 import { prisma } from "../lib/db";
 import { error } from "node:console";
+import { pusher } from "../lib/pusher";
 
 interface Profile{
   image?:string;
@@ -82,7 +83,7 @@ export async function registerVote(req: Request, res: Response) {
                 connect: { id: optionId },
               },
               user: {
-                connect: { id: user.id },
+                connect: { id: user!.id },
               },
               //   Think of it like a shortcut for an if statement inside an object > see &&
               // ...(user && {
@@ -107,7 +108,7 @@ export async function registerVote(req: Request, res: Response) {
         data: {
           amount: 0.0,
           user: {
-            connect: { id: user.id },
+            connect: { id: user!.id },
           },
           poll: {
             connect: { id: pollId },
@@ -125,7 +126,7 @@ export async function registerVote(req: Request, res: Response) {
 
 export async function addComment(req: Request, res: Response) {
   try {
-    const { id, name } = req.user;
+    const { id, name } = req.user!;
     const { text, pollId } = req.body;
     // return res.status(200).json({id, user:name})
     if (!text || !pollId)
@@ -137,6 +138,9 @@ export async function addComment(req: Request, res: Response) {
         author: { connect: { id: id } },
       },
     });
+    pusher.trigger(`poll-comment-${pollId}`,'new-comment',{
+      comment
+    })
 
     return res.status(200).json({ data: comment });
   } catch (error) {
@@ -323,7 +327,7 @@ export async function getVotes(req: Request, res: Response) {
   const pageLimit = 8;
   try {
     const loaded = parseInt(req.query.loaded as string) || 0 
-    const {id} = req.user;
+    const {id} = req.user!;
 
     const [votes, count] = await Promise.all( [
       await prisma.vote.findMany({
@@ -360,7 +364,7 @@ export async function getVotes(req: Request, res: Response) {
 
 export async function updateUser(req: Request, res: Response) {
   try {
-    const {id} = req.user;
+    const {id} = req.user!;
     const {image, name} =  req.body;
     if(image === null || name === null)return res.status(400).json({error:"Nothing to update"});
     let profile:Profile = {};
@@ -390,7 +394,7 @@ export async function updateUser(req: Request, res: Response) {
 }
  export async function getCurrentUser(req: Request, res: Response){
   try {
-    const {id, name, image, email} = req.user
+    const {id, name, image, email} = req.user!
     return res.status(200).json({id, image, name, email})
 
   } catch (error) {
