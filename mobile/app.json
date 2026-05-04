@@ -10,7 +10,8 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.abelbane.mobile"
+      "bundleIdentifier": "com.selecshyon.mobile",
+      "googleServicesFile": "./GoogleService-Info.plist" 
     },
     "android": {
       "adaptiveIcon": {
@@ -23,7 +24,8 @@
       "softwareKeyboardLayoutMode": "resize",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.abelbane.mobile"
+      "package": "com.selecshyon.mobile",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "bundler": "metro",
@@ -32,6 +34,7 @@
     },
     "plugins": [
       "expo-router",
+      "./notifee-plugin.js",
 
       [
         "expo-splash-screen",
@@ -45,7 +48,10 @@
           }
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging",
+      "expo-build-properties"
     ],
     "experiments": {
       "typedRoutes": true,

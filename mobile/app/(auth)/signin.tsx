@@ -8,19 +8,19 @@ import { useAuth } from '@/hooks/UseAuth';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { signInSchema } from '@/schema/schemas';
-import z from 'zod';
+import z, { email } from 'zod';
 import { AxiosError } from 'axios';
 import { toast } from 'sonner-native';
-import { CONNECTION_ERROR, INVALID_CREDENTIALS, VERIFICATION_REQUIRED } from '@/contants/errors';
+import { CONNECTION_ERROR, INVALID_CREDENTIALS, SOMETHING_WENT_WRONG, VERIFICATION_REQUIRED } from '@/contants/errors';
 
 type SignInFormData = z.infer<typeof signInSchema>
 
 const SigninScreen = () => {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
-  const { signInMutation, isSigningIn } = useAuth()
+  const { signInMutation, isSigningIn, forgotPasswordMutation, isSendingResetOTP } = useAuth()
   const [error, setError] = useState<string | null>()
 
-  const { control, handleSubmit, formState: { errors } } = useForm<SignInFormData>({
+  const { control, handleSubmit, formState: { errors }, getFieldState, getValues } = useForm<SignInFormData>({
     resolver: zodResolver(signInSchema),
     defaultValues: {
       email: "",
@@ -28,27 +28,57 @@ const SigninScreen = () => {
     }
   })
 
-  function handleSignIn(data: SignInFormData){
+  function handleSignIn(data: SignInFormData) {
     setError(null);
-    signInMutation.mutate(data,{
-      onError:(error)=>{
+    signInMutation.mutate(data, {
+      onError: (error) => {
         const axiosError = (error as AxiosError)
-        if(!axiosError.response){
+        if (!axiosError.response) {
           toast.error(CONNECTION_ERROR)
           return;
         }
-        else if(axiosError && axiosError.status === 403){
+        else if (axiosError && axiosError.status === 403) {
           toast(VERIFICATION_REQUIRED);
           router.push("/(auth)/otp")
         }
-        else if(axiosError && axiosError.status === 401){
+        else if (axiosError && axiosError.status === 401) {
           toast.error(INVALID_CREDENTIALS)
           setError("Invalid credentials.")
         }
-        
+
       }
     })
-    
+
+
+  }
+
+  function handleForgotPassword() {
+    const currentEmail = getValues("email");
+    const { invalid } = getFieldState("email");
+
+    if (!currentEmail || invalid) {
+      toast.error("Please enter a valid email address first.");
+      setError("Valid email required to reset password.");
+      return;
+    }
+
+    forgotPasswordMutation.mutate({ email: currentEmail }, {
+      onSuccess: () => {
+        toast.success("OTP sent to your email")
+        router.push({
+          pathname: "/(auth)/reset",
+          params: { email: currentEmail }
+        });
+      },
+      onError:(err)=>{
+        const error = (err as AxiosError)
+        if(!error.response)toast.error(CONNECTION_ERROR)
+        else if(error.response){
+      console.log(error)
+          toast.error(SOMETHING_WENT_WRONG)
+        }
+      }
+    })
 
   }
 
@@ -66,15 +96,15 @@ const SigninScreen = () => {
     >
 
       <View className='relative flex pt-8 '>
-      <LinearGradient
-        colors={['rgba(255,255,255,0.1)', 'transparent']}
-        className='absolute left-0 right-0 top-0 h-[300]'
-      />
-        <Pressable onPress={()=>router.back()}>
+        <LinearGradient
+          colors={['rgba(255,255,255,0.1)', 'transparent']}
+          className='absolute left-0 right-0 top-0 h-[300]'
+        />
+        <Pressable className='' onPress={() => router.back()}>
           <Ionicons style={{ left: 0, flexDirection: "row", marginBottom: 4, marginHorizontal: 12 }} name='arrow-back-outline' size={36} color="#FFFFFF" />
         </Pressable>
 
-      <Text className='text-text-primary text-7xl tracking-[4px] font-thin mx-4 mb-4'>Welcome Back!</Text>
+        <Text className='text-text-primary text-7xl tracking-[4px] font-thin mx-4 mb-4'>Welcome Back!</Text>
         {/*FORMS */}
         {/* EMAIL SECTION */}
         <View className='m-4 mt-6'>
@@ -132,11 +162,12 @@ const SigninScreen = () => {
           {(errors && errors.password) && <Text className='text-red-500'>{errors.password.message}</Text>}
 
         </View>
-          {(error) && <Text className='text-red-500 text-center'>{error}</Text>}
-        <Pressable className='mt-4 relative mx-4 h-12 ' disabled={isSigningIn}>
+        {(error) && <Text className='text-red-500 text-center'>{error}</Text>}
+        {isSendingResetOTP ? <ActivityIndicator size={22} color={"#FFFFFF"}/> :
+        <Pressable className='mt-4 relative mx-4 h-12 ' disabled={isSigningIn} onPress={handleForgotPassword}>
           <Text className='text-text-secondary font-light absolute right-0'>Forgot password?</Text>
-        </Pressable>
-
+        </Pressable> 
+        }
         <Pressable className={`flex-row rounded-lg gap-2 border-2 border-white w-48 p-1 mt-2 items-center justify-center self-center`} onPress={handleSubmit(handleSignIn)}>
           <Text className='text-2xl text-text-primary font-light'>Sign in</Text>
           {isSigningIn ? <ActivityIndicator size={22} color="#FFFFFF" /> :

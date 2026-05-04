@@ -16,6 +16,8 @@ model User {
   image         String?   @db.Text
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  userDevice String?
+  
   banned        Boolean?
   accounts      Account[]
   comments      Comment[]
@@ -25,6 +27,7 @@ model User {
   sessions      Session[]
   votes         Vote[]
   notifications Notification[] 
+  
 
   @@map("user")
 }
@@ -151,7 +154,6 @@ model Comment {
 
 model Vote {
   id        String      @id @default(uuid())
-  deviceId  String?
   tier      PricingTier @default(FREE)
   createdAt DateTime    @default(now())
   weight    Int
@@ -189,14 +191,20 @@ model Invoice {
 model Notification{
   id String @id @default(uuid())
   createdAt   DateTime    @default(now())
-  type String
+  type NotificationType
   path String
   userId String
   message String
+  title String
   isRead    Boolean  @default(false)
   user User @relation(fields: [userId], references: [id])
   @@index([userId])
   @@map("notification")
+}
+
+enum NotificationType{
+  END_POLL
+  THREAD_REPLY
 }
 
 

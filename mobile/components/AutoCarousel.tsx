@@ -1,8 +1,9 @@
 import { FeaturedPoll } from '@/types/types';
 import React, { useState } from 'react';
-import { View, Dimensions, Text } from 'react-native';
+import { View, Dimensions, Text, Pressable } from 'react-native';
 import Carousel from 'react-native-reanimated-carousel';
 import { Image } from 'expo-image';
+import { router } from 'expo-router';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -10,9 +11,10 @@ const { width: screenWidth } = Dimensions.get('window');
 
 const AutoCarousel = ({ polls }: { polls: FeaturedPoll[] }) => {
     const [selectedItem, setSelectedItem] = useState(0)
-    // useEffect((
-
-    // )=>[selectedItem])
+    
+    const handleOnTap =(id:string)=>{
+        router.push(`/poll/${id}`)
+    }
     return (
         <View className="flex-1 items-center justify-center py-4">
             <Carousel
@@ -25,16 +27,19 @@ const AutoCarousel = ({ polls }: { polls: FeaturedPoll[] }) => {
                 scrollAnimationDuration={1000}
                 onSnapToItem={(index) => setSelectedItem(index)}
                 renderItem={({ item }) => (
+                    <Pressable onPress={()=>handleOnTap(item.id)} className='active:opacity-70'>
                     <View className="px-4 justify-center items-center">
                         <View className='z-20 absolute flex-row w-full items-center justify-center p-2 bottom-0'>
                             <Text className=' text-white/70 text-center bg-black/30 p-2 rounded-full'>{item.name}</Text>
                         </View>
                         <Image
+                        
                             source={{ uri: item.banner ?? "https://picsum.photos/id/1/800/400" }}
                             style={{ width: "100%", height: "100%", borderRadius:10}}
                             alt={item.banner ?? "Banner"}
                         />
                     </View>
+                </Pressable>
 
                 )}
             />

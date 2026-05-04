@@ -6,27 +6,7 @@ import { View, Text,Pressable,Image } from 'react-native'
 import React, { useEffect } from 'react'
 import Ionicons from '@react-native-vector-icons/ionicons';
 import { router } from 'expo-router';
-import { useSharedValue, withRepeat, withTiming, useAnimatedStyle,Easing } from 'react-native-reanimated';
 const HomeScreen = () => {
-  const translateX = useSharedValue(0);
-
-  useEffect(() => {
-    // 1. Animate to -50% (the width of one full text set)
-    // 2. Use withRepeat with -1 to loop forever
-    // 3. Use easing.linear so it doesn't slow down/speed up
-    translateX.value = withRepeat(
-      withTiming(-500, { // Adjust -500 based on your text width
-        duration: 10000, // 10 seconds for a slow, premium crawl
-        easing: Easing.linear,
-      }),
-      -1, // -1 means infinite
-      false // Do not reverse, just jump back to start
-    );
-  }, []);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }],
-  }));
 
   function handleSignIn(){
     router.push("/(auth)/signin")

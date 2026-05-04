@@ -7,7 +7,8 @@ import { auth } from './lib/auth';
 import {closePolls} from "./jobs/polljob"
 import authRoutes from "./routes/auth.routes";
 import userRoutes from "./routes/user.routes";
-import adminRoutes from "./routes/admin.routes"
+import adminRoutes from "./routes/admin.routes";
+import "./workers/notificationWorker";
 
 import path from "path"
 

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>AIzaSyDaWkfNS2bD6_r7aJGYz8QWKYvTW1gX5bg</string>
+	<key>GCM_SENDER_ID</key>
+	<string>598216349193</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.selecshyon.mobile</string>
+	<key>PROJECT_ID</key>
+	<string>selecshyon-voting</string>
+	<key>STORAGE_BUCKET</key>
+	<string>selecshyon-voting.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:598216349193:ios:bbd6583dc62a3bf1048ad8</string>
+</dict>
+</plist>

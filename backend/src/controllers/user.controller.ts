@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import { prisma } from "../lib/db";
 import { error } from "node:console";
 import { pusher } from "../lib/pusher";
+import type { PricingTier } from "../generated/prisma";
 
 interface Profile{
   image?:string;
@@ -11,19 +12,19 @@ interface Profile{
 
 const weights = {
   FREE: 1,
-  BASIC: 30,
-  PREMIUM: 80,
+  BASIC: 5,
+  PREMIUM: 8,
 };
 
 export async function registerVote(req: Request, res: Response) {
-  const basic = 15;
-  const premium = 100;
+
   try {
     //use xendit here or stripe or whatever payment api, Ill implement later.
     const requiredFields = ["tier", "pollId", "optionId"];
-    const { deviceId, tier, pollId, optionId } = req.body;
+    const { tier, pollId, optionId } = req.body;
     const user = req.user;
     const err: String[] = [];
+
     const body = Object.keys(req.body);
     requiredFields.forEach((item) => {
       if (!body.includes(item)) err.push(item);
@@ -55,25 +56,20 @@ export async function registerVote(req: Request, res: Response) {
         .status(400)
         .json({ error: "This poll is closed or does not exist." });
 
-    if (tier.toUpperCase() === "FREE") {
-      if (!deviceId)
-        return res.status(400).json({ error: "Device ID missing" });
-      else {
-        const isVoteExisting = await prisma.vote.findFirst({
+    //Check if free votes exist
+    const isVoteExisting = await prisma.vote.findMany({
           where: {
-            deviceId: deviceId,
-            tier: "FREE",
+            userId:user.id,
             pollId: pollId,
           },
         });
-        if (isVoteExisting)
-          return res
-            .status(403)
-            .json({ error: "Only one free vote at a time" });
+
+    if (tier.toUpperCase() === "FREE") {
+        if (isVoteExisting.findIndex((item)=> item.tier === "FREE") !== -1){
+          return res.status(403).json({ error: "Only one free vote at a time" });}
         else {
           const vote = await prisma.vote.create({
             data: {
-              deviceId: deviceId,
               tier: "FREE",
               weight: weights.FREE,
               poll: {
@@ -85,48 +81,50 @@ export async function registerVote(req: Request, res: Response) {
               user: {
                 connect: { id: user!.id },
               },
-              //   Think of it like a shortcut for an if statement inside an object > see &&
-              // ...(user && {
-              //   user: {
-              //     connect: { id: user.id },
-              //   },
-              // }),
             },
           });
           return res.status(200).json({
             data: vote,
           });
         }
-      }
+      
     } else if (
       tier.toUpperCase() === "BASIC" ||
       tier.toUpperCase() === "PREMIUM"
-    ) {
-      //try here the xendit or other
-      //create invoice, create order later via webhook if success.
-      const invoice = await prisma.invoice.create({
-        data: {
-          amount: 0.0,
-          user: {
-            connect: { id: user!.id },
-          },
-          poll: {
-            connect: { id: pollId },
-          },
-          tier: tier.toUpperCase(),
-        },
-      });
-      return res.status(200).json({ data: invoice });
-    }
-    //if device ID is on the list and it's free tier, intercept.
+    ) 
+    {
+    //AD BASED PREMIUMS
+     const tierParsed:PricingTier =  tier.toUpperCase().trim()
+     if (isVoteExisting.findIndex((item)=> item.tier === tierParsed)!== -1){
+          return res.status(403).json({ error: `Only one ${tier} vote at a time` });}
+        const vote = await prisma.vote.create({
+            data: {
+              tier: tierParsed,
+              weight: weights[tierParsed],
+              poll: {
+                connect: { id: pollId },
+              },
+              option: {
+                connect: { id: optionId },
+              },
+              user: {
+                connect: { id: user!.id },
+              },
+            },
+          });
+          return res.status(200).json({
+            data: vote,
+          });
+        }
   } catch (error) {
+    console.log("error on add vote", error)
     return res.status(500).json({ error: "Internal server error" });
   }
 }
 
 export async function addComment(req: Request, res: Response) {
   try {
-    const { id, name } = req.user!;
+    const { id } = req.user!;
     const { text, pollId } = req.body;
     // return res.status(200).json({id, user:name})
     if (!text || !pollId)
@@ -135,8 +133,11 @@ export async function addComment(req: Request, res: Response) {
       data: {
         text,
         poll: { connect: { id: pollId } },
-        author: { connect: { id: id } },
+        author: { connect: { id: id }, }, 
       },
+      include:{
+        author:{select:{id:true, image:true, name:true}}
+      }
     });
     pusher.trigger(`poll-comment-${pollId}`,'new-comment',{
       comment
@@ -148,13 +149,62 @@ export async function addComment(req: Request, res: Response) {
   }
 }
 
+
+// export async function getPollComments(req: Request, res: Response) {
+//   try {
+//     const { id } = req.params;
+//     const page = parseInt(req.query.page as string) || 1;
+//     const limit = 10;
+//     const skip = (page - 1) * limit;
+
+//     if (!id || id === "undefined") {
+//       return res
+//         .status(400)
+//         .json({ error: "Missing Poll ID in request parameters." });
+//     }
+
+//     const [comments, totalCount] = await prisma.$transaction([
+//       prisma.comment.findMany({
+//         where: { pollId: id as string },
+//         take: limit,
+//         skip: skip,
+//         orderBy: { createdAt: "desc" },
+//         include: {
+//           author: {
+//             select: { name: true, image: true },
+//           },
+//         },
+//       }),
+//       prisma.comment.count({
+//         where: { pollId: id as string },
+//       }),
+//     ]);
+
+//     const hasMore = skip + comments.length < totalCount;
+
+//     return res.status(200).json({
+//       comments,
+//       pagination: {
+//         totalCount,
+//         currentPage: page,
+//         hasMore,
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Fetch Comments Error:", error);
+//     return res.status(500).json({ error: "Internal server error" });
+//   }
+// }
+
+
 export async function getPollComments(req: Request, res: Response) {
   try {
     const { id } = req.params;
-    const page = parseInt(req.query.page as string) || 1;
+    const commentsShown = parseInt(req.query.commentShown as string) || 1;
+    console.log("commentShown", commentsShown)
     const limit = 10;
-    const skip = (page - 1) * limit;
-
+    const skip = commentsShown;
+    
     if (!id || id === "undefined") {
       return res
         .status(400)
@@ -178,13 +228,12 @@ export async function getPollComments(req: Request, res: Response) {
       }),
     ]);
 
-    const hasMore = skip + comments.length < totalCount;
+    const hasMore = (comments.length + commentsShown) < totalCount;
 
     return res.status(200).json({
       comments,
       pagination: {
         totalCount,
-        currentPage: page,
         hasMore,
       },
     });
@@ -196,15 +245,14 @@ export async function getPollComments(req: Request, res: Response) {
 
 export async function searchPoll(req: Request, res: Response) {
   try {
-    const { searchQuery, page = "1", limit = "10" } = req.query;
+    const { searchQuery, hasLoaded} = req.query;
 
     if (!searchQuery) {
       return res.status(400).json({ error: "Search query is required" });
     }
 
-    const p = parseInt(page as string) || 1;
-    const l = parseInt(limit as string) || 10;
-    const skip = (p - 1) * l;
+    const limit = 10;
+    const skip = parseInt((hasLoaded ?? 0) as string);
 
     // Use a transaction to get both data and the total count in one go
     const [polls, totalCount] = await prisma.$transaction([
@@ -231,7 +279,7 @@ export async function searchPoll(req: Request, res: Response) {
           category: true,
         },
         orderBy: { createdAt: "desc" },
-        take: l,
+        take: limit,
         skip: skip,
       }),
       prisma.poll.count({
@@ -255,14 +303,14 @@ export async function searchPoll(req: Request, res: Response) {
       }),
     ]);
 
-    const hasMore = skip + polls.length < totalCount;
+    //skip is parsed hasLoaded from query / front-end.
+    const hasMore = (polls.length + skip) < totalCount;
 
     return res.status(200).json({
       data: {
         polls,
         pagination: {
           totalCount,
-          currentPage: p,
           hasMore,
         },
       },
@@ -322,7 +370,6 @@ export async function getHomeFeed(req: Request, res: Response) {
   }
 }
 
-//Show more, I didn't check with ai for this so might break or not the standard?
 export async function getVotes(req: Request, res: Response) {
   const pageLimit = 8;
   try {
@@ -403,3 +450,49 @@ export async function updateUser(req: Request, res: Response) {
  }
 
 
+export async function updateFCM(req: Request, res: Response){
+  try {
+    const {id} = req.user
+    const {fcm} = req.body
+    if(!fcm || fcm === null || fcm === "" || fcm === undefined){
+      console.log("UNDEFINED")
+      return res.status(400).json({error:"Bad request"}) }
+    console.log("FCM Received: ", fcm)
+    await prisma.user.update({
+      where:{
+        id:id
+      },
+      data:{
+        userDevice:fcm
+      }
+  })
+  res.status(200).json({message:"success"})
+  } catch (error) {
+      return res.status(500).json({ error: "Internal server error" });   
+  }
+}
+
+export async function deleteComment(req: Request, res: Response) {
+  try {
+    const {id} = req.user;
+    const {commentId} = req.body 
+
+    if(commentId === null || commentId === "")return res.status(400).json({error:"Bad request"})
+
+    //confirm if comment is from the curren user first
+    await prisma.comment.delete({
+      where:{
+        id:commentId,
+        authorId:id
+      }
+    })
+
+    return res.status(200).json({ message: "Comment deleted successfully" });
+  }
+  catch (error) {
+    console.error("Delete Comment Error:", error);
+    if ((error as any).code === "P2025") {
+      return res.status(404).json({ error: "Comment not found." });
+    }
+    return res.status(500).json({ error: "Failed to delete comment." })}
+}

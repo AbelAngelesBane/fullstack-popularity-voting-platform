@@ -10,7 +10,7 @@ import Animated, { useSharedValue, withSpring, useAnimatedStyle, interpolate } f
 
 const icons: Record<string, Function> = {
   index: (props:any) => <Ionicons name="home-outline" size={24} {...props} />,
-  votes: (props:any) => <Ionicons name="checkmark-circle-outline" size={24} {...props} />,
+//   votes: (props:any) => <Ionicons name="checkmark-circle-outline" size={24} {...props} />,
   feed: (props:any) => <Ionicons name="reader-outline" size={24} {...props} />,
   profile: (props:any) => <Ionicons name="person-circle-outline" size={24} {...props} />,
 };

@@ -77,6 +77,8 @@ const VoteScreen = () => {
           contentContainerStyle={{paddingBottom:8}}
           removeClippedSubviews={true}
           showsVerticalScrollIndicator={false}
+          ListFooterComponent={isAdding ? <ActivityIndicator size={22} color={"#FFFFFF"} className='mt-2'/> : null}
+          ListEmptyComponent={!isRefreshing || !isLoading ? <EmptyVotes /> : <PollSkeleton /> }
           refreshControl={
             <RefreshControl
               // colors={["#FFFFFF"]} 
@@ -86,8 +88,6 @@ const VoteScreen = () => {
             />}
           onEndReached={handleShowMore}
           onEndReachedThreshold={0.5}
-          ListEmptyComponent={!isRefreshing || !isLoading ? <EmptyVotes /> : <PollSkeleton /> }
-          ListFooterComponent={isAdding ? <ActivityIndicator size={22} color={"#FFFFFF"} className='mt-2'/> : null}
           // ListFooterComponent={data && data.data.hasMore ? (isAdding) ? <ActivityIndicator size={22} color={"#FFFFFF"} className='mt-2'/> :
           //   <Pressable onPress={handleShowMore} disabled={isLoading}>
           //     <Text className='text-text-primary mt-2 text-center'>Show more...</Text>

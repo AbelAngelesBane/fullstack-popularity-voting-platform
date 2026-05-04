@@ -4,6 +4,7 @@ import { auth } from "../lib/auth";
 import { fromNodeHeaders } from "better-auth/node";
 import { prisma } from "../lib/db";
 import { uploadToSupabase } from "../helper/supabase-upload";
+import type { PricingTier } from "../generated/prisma";
 
 interface PollUpdateInput {
   name?: string;
@@ -239,68 +240,72 @@ export async function updatePolls(req: Request, res: Response) {
 }
 export async function getPollById(req: Request, res: Response) {
   try {
-    const {id} = req.user
+    const { id: userId } = req.user;
     const { pollId } = req.params as { pollId: string };
-    if (!pollId)
-      return res.status(400).json({ error: "Required param missing" });
-    const [poll, userVotes] = await Promise.all([prisma.poll.findFirst({
-      where: {
-        id: pollId,
-      },
-      include: {
-        category: true,
-        options: {
-          include: {
-            nominee: true,
-            _count: {
-              select: { votes: true },
-            },
+
+    if (!pollId) return res.status(400).json({ error: "Required param missing" });
+
+    const [poll, userVotes, weightedSums] = await Promise.all([
+      prisma.poll.findFirst({
+        where: { id: pollId },
+        include: {
+          category: true,
+          options: {
+            include: { nominee: true },
           },
         },
-        comments: true,
-      },
-    }),
-    await prisma.vote.findMany({
-        where:{
-          pollId,
-          userId:id
-        }
+      }),
+      prisma.vote.findMany({
+        where: { pollId, userId },
+        select: { tier: true }
+      }),
+      prisma.vote.groupBy({
+        by: ['optionId'],
+        where: { pollId },
+        _sum: { weight: true }
       })
-  ])
+    ]);
+
     if (!poll) return res.status(404).json({ error: "Poll not found" });
-    const totalVotes = poll?.options.reduce(
-      (init:number, opt:any) => init + opt._count.votes,
-      0,
+
+    //This one is a GEMINI suggestion. Apparently turns into a quicklokkup object. Will look into it later.
+    const weightMap = Object.fromEntries(
+      weightedSums.map(s => [s.optionId, s._sum.weight || 0])
     );
+
+    const totalWeightedVotes = weightedSums.reduce((acc, curr) => acc + (curr._sum.weight || 0), 0);
+
+    const currentVoteSpent = userVotes.map(v => v.tier);
+
     const response = {
       id: poll.id,
       authorId: poll.authorId,
-      editedById: poll.editedById,
       category: poll.category.title,
       name: poll.name,
+      banner: poll.banner,
       createdAt: poll.createdAt,
       deadline: poll.deadline,
-      updatedAt: poll.updatedAt,
       active: poll.active,
       archived: poll.archived,
-      archivedAt: poll.archivedAt,
-      totalVotes,
-      banner:poll.banner,
-      userVotes,
-      nominees: poll.options.map((item:any) => {
+      totalVotes: totalWeightedVotes, // Now showing weighted total
+      currentVoteSpent,
+      nominees: poll.options.map((item: any) => {
+        const weightedTotal = weightMap[item.id] || 0;
         return {
           id: item.id,
           pollId: item.pollId,
-          nomineeId: item.id,
+          nomineeId: item.nominee.id,
           name: item.nominee.name,
           bio: item.nominee.bio,
           avatar: item.nominee.avatar,
-          votes: item._count.votes,
+          votes: weightedTotal, // This now reflects the sum of weights
         };
       }),
     };
-    return res.status(200).json({ data: { response } });
+
+    return res.status(200).json({ data: response });
   } catch (error) {
+    console.error("GET_POLL_BY_ID_ERROR:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 }
@@ -360,11 +365,11 @@ export async function registerNominees(req: Request, res: Response) {
 
 export async function deleteComment(req: Request, res: Response) {
   try {
-    const {commentId} = req.body;
+    const {commentId} = req.params;
     if(!commentId || commentId === undefined)return res.status(400).json({ error: "Comment ID required" });
     const deleteUser = await prisma.comment.deleteMany({
     where: {
-      id:commentId
+      id:commentId.toString()
     },
     });
     if(deleteUser.count === 0){
@@ -409,6 +414,7 @@ export async function searchNominees(req: Request, res: Response) {
     return res.status(500).json({ error: `Internal server error ${error}` });
   }
 }
+
 // export async function filterPollsByCateg(req: Request, res: Response){
 //   try {
 //     const {categ, }

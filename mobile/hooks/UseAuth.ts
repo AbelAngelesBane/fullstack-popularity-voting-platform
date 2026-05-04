@@ -1,15 +1,20 @@
 
+import { SOMETHING_WENT_WRONG } from "@/contants/errors";
 import { api } from "@/lib/api"
-import { saveUserData } from "@/lib/storage";
-import { signInSchema, signupSchema } from "@/schema/schemas";
+import { clearUser, saveUserData } from "@/lib/storage";
+import { ResetPasswordInput, signInSchema, signupSchema } from "@/schema/schemas";
 import { MyProfile, OtpResponse, SignInResponse, SignupResponse, VerifyOtpParams } from "@/types/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { AxiosError } from "axios";
+import { router } from "expo-router";
+import { toast } from "sonner-native";
 
 import z from "zod";
 
 
 
 type SignupData = z.infer<typeof signupSchema>;
+
 export const useAuth = () => {
     const queryClient = useQueryClient();
 
@@ -54,6 +59,7 @@ export const useAuth = () => {
                 const email = data.user.email;
                 const token = data.token;
                 saveUserData({uid, email,token})
+                queryClient.invalidateQueries({queryKey:["myprofile"]})
             }
         }
     })
@@ -67,6 +73,51 @@ export const useAuth = () => {
         
     })
 
+    const updateFCM = useMutation({
+        mutationFn:async(body:{fcm:string})=>{
+            const data = await api.patch("/user/fcm",body)
+            return data
+        }
+    })
+
+    const logout = useMutation({
+        mutationFn:async()=>{
+            const data = await api.post("/auth/signout")
+            return data
+        },
+        onSuccess:()=>{
+            toast.success("Successfully signed out")
+            clearUser();
+        },
+        onError:(err:AxiosError)=>{
+            if (!err.response) {
+               toast.error("Network Error\nPlease check your connection.");
+                } 
+            else{
+                toast.error(SOMETHING_WENT_WRONG)}
+            }            
+    })
+
+    const forgotPassword=useMutation({
+        mutationFn:async(body:{email:string})=>{
+            const data = await api.post("/auth/forgotPassword",body);
+            return data
+        },
+    })
+
+
+    const resetPassword=useMutation({
+        mutationFn:async(body:ResetPasswordInput)=>{
+            const data = await api.post("/auth/resetPassword",body);
+            return data
+        },
+        onSuccess:()=>{
+            toast.success("Success.")
+            router.push("/(auth)/signin")
+        }
+    })
+
+
     return { 
         signUpMutation, 
         isSigningUp: signUpMutation.isPending, 
@@ -78,8 +129,15 @@ export const useAuth = () => {
         isSigningIn:signInMutation.isPending,
         isLoadingProfile,
         myProfile,
+        updateFCM,
         updateProfileMutation,
-        isUpdatingProfile:updateProfileMutation.isPending
+        isUpdatingProfile:updateProfileMutation.isPending,
+        logout,
+        isLoggingOut:logout.isPending,
+        forgotPasswordMutation:forgotPassword,
+        resetPasswordMutation:resetPassword,
+        isReseting:resetPassword.isPending,
+        isSendingResetOTP:forgotPassword.isPending
     }
 
 }
