@@ -12,9 +12,9 @@ const TabLayout = () => {
             <Tabs.Screen
                 options={{ title: 'Home' }}
                 name='index' />
-            <Tabs.Screen
+            {/* <Tabs.Screen
                 options={{ title: 'Votes' }}
-                name='votes' />
+                name='votes' /> */}
             <Tabs.Screen
                 options={{ title: 'Feed' }}
                 name='feed' />

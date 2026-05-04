@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query"
 
 
 export const useFeed = ()=>{
-    const {data, isLoading, isError, isSuccess} = useQuery({
+    const {data, isFetching, isError, isSuccess, error} = useQuery({
         queryFn: async()=>{
             const data = await api.get<HomePollsResponse>("/user/home");
             return data.data;
@@ -13,5 +13,5 @@ export const useFeed = ()=>{
         queryKey:['feed']
     });
 
-    return {data, isLoading, isError, isSuccess}
+    return {data, isFetching, isError, isSuccess, error}
 }

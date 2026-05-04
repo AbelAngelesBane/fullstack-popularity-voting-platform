@@ -40,7 +40,7 @@ export default function MyTabBar({ state, descriptors, navigation }: BottomTabBa
                 justifyContent:'space-between', 
                 borderRadius:35,
                 paddingVertical:15,
-                marginHorizontal:18,
+                marginHorizontal:64,
                 shadowColor:"#000000",
                 shadowOffset:{width:0, height:12},
                 shadowRadius:10,

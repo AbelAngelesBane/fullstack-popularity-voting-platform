@@ -1,10 +1,26 @@
 import { View, Text, ScrollView, Pressable, TextInput } from 'react-native'
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import Ionicons from '@react-native-vector-icons/ionicons'
 import { router } from 'expo-router'
 
+// enum SearchFilter {
+//   ALL, 
+//   ACTIVE, 
+//   COMPLETED
+// }
 
 const ExplorePollsScreen = () => {
+  const [searchQuery, setSearchQuery] = useState<string | null>()
+  //Later: Implement in the backend
+  // const [searchFilter, setSearchFilter] = useState<SearchFilter>(SearchFilter.ALL)
+
+  useEffect(()=>{
+    setTimeout(()=>{
+      
+    },500)
+  },[searchQuery])
+
+
   return (
     <ScrollView className='flex-1 p-4 bg-background' contentContainerStyle={{paddingBottom:140}} showsVerticalScrollIndicator={false}>
       {/* Search Bar */}

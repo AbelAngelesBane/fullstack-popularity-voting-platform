@@ -145,7 +145,6 @@ const OtpScreen = () => {
                     }>);
                     if (!axiosError.response) {
                         toast.error("Network Error\nPlease check your connection.");
-
                     }
                     else {
                         const err = axiosError.response.data

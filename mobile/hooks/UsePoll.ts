@@ -1,28 +1,42 @@
 import { api } from "@/lib/api";
 import { CommentResponse, GetPollResponse } from "@/types/types";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
-export const usePoll = (pollId: string) => {
-    const { data, isFetching, isLoading, error } = useQuery({
+export const usePoll = (pollId?: string,commentsShown?:number) => {
+    const { data, isPending, error } = useQuery({
 
         queryKey: ["poll", pollId], 
         queryFn: async () => {
-            if (!pollId) throw new Error("Poll ID is missing");
             const response = await api.get<GetPollResponse>(`/user/poll/${pollId}`);
-            console.log("Response:", response)
-            return response.data.data;
+            return response.data.data
         },
-        // this runs the query
         enabled: !!pollId, 
     });
 
     const {data:comments, isFetching:isCommentsFetching}= useQuery({
-        queryKey:[`comments-${pollId}`,pollId],
+        //When the scrollToEnd doesnt work! check here if totalCommentCount is part of key
+        queryKey:[`comments-${pollId}`, commentsShown],
         queryFn:async()=>{
-            const data = await api.get<CommentResponse>(`/user/comments/${pollId}`);
+            const data = await api.get<CommentResponse>(`/user/comments/${pollId}?commentShown=${commentsShown}`);
             return data.data.comments;
         }
     })
 
-    return { data, isFetching, isLoading, error, comments, isCommentsFetching };
+    const removeComment = useMutation({
+        mutationFn:async (params:string)=> {
+            const data =await api.delete(`/user/comment/${params}`)
+            return data;
+        }
+    })
+
+    const addComment = useMutation({
+        mutationFn:async (body:{text:string, pollId:string})=> {
+            const data =await api.post(`/user/comment`,body);
+            return data;
+        }
+    })
+
+    return { data, isPending, error, comments, isCommentsFetching, removeComment, addComment };
 }
+
+

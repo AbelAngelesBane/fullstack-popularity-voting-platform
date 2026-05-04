@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "598216349193",
+    "project_id": "selecshyon-voting",
+    "storage_bucket": "selecshyon-voting.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:598216349193:android:38a9cb5277758cc7048ad8",
+        "android_client_info": {
+          "package_name": "com.selecshyon.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDLJUThKysEdwqjJoI3SNCPK_e2Mx5sY1M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

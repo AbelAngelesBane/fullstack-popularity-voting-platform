@@ -153,11 +153,22 @@ export async function verifyOTP(req: Request, res: Response) {
 }
 
 export const logout = async (req: Request, res: Response) => {
+  const {id} = req.user
   try {
-    await auth.api.signOut({
+    
+    const result = await auth.api.signOut({
       headers: fromNodeHeaders(req.headers),
     });
-
+    if(result.success){
+      await prisma.user.update({
+        where:{
+          id:id
+        },
+        data:{
+          userDevice:null
+        }
+      })
+    }
     return res.status(200).json({ message: "Logged out successfully" });
   } catch (error) {
     return res.status(500).json({ error: "Failed to logout" });
@@ -224,3 +235,67 @@ export async function deleteAccount(req: Request, res: Response) {
     return res.status(500).json({ error: "Failed to delete account." });
   }
 }
+
+export async function forgotPassword(req: Request, res: Response) {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+    await auth.api.forgetPasswordEmailOTP({
+      body: {
+        email: email.trim().toLowerCase(),
+      },
+    });
+
+    return res.status(200).json({
+      message: "If an account exists, a reset code has been sent to your email.",
+      step: "verify-reset-otp",
+    });
+  } catch (error: any) {
+    console.error("Forgot Password Error:", error);
+    return res.status(200).json({ message: "Reset code sent if email exists." });
+  }
+}
+
+export async function resetPassword(req: Request, res: Response) {
+  try {
+    const { email, otp, newPassword } = req.body;
+
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ 
+        error: "Bad Request", 
+        message: "Email, OTP, and new password are required" 
+      });
+    }
+
+    // await auth.api.resetPassword({
+    //   body: {
+    //     newPassword: newPassword,
+    //     token: otp, 
+    //   },
+    // });
+
+    await auth.api.resetPasswordEmailOTP({
+      body: {
+        email: email.trim().toLowerCase(),
+        otp: otp, 
+        password: newPassword,
+      },
+    });
+    
+
+
+    return res.status(200).json({
+      message: "Password has been reset successfully. You can now login with your new password.",
+    });
+  } catch (error: any) {
+    console.error("Reset Password Error:", error);
+    return res.status(400).json({
+      error: "Reset failed",
+      message: error.message || "Invalid or expired OTP code.",
+    });
+  }
+}
+
